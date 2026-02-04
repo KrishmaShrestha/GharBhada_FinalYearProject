@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as tenantService from '../services/tenantService';
 import TenantPropertyCard from '../components/common/TenantPropertyCard';
-import Skeleton from '../components/common/Skeleton';
+import { SkeletonCard } from '../components/common/Skeleton';
 import { FiSearch, FiFilter, FiX, FiInfo } from 'react-icons/fi';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -168,7 +168,7 @@ const Properties = () => {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <Skeleton key={i} className="h-[400px] rounded-2xl" />
+                            <SkeletonCard key={i} />
                         ))}
                     </div>
                 ) : properties.length > 0 ? (

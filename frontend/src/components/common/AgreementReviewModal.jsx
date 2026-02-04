@@ -1,4 +1,4 @@
-import { FiFileText, FiCheck, FiX, FiShield, FiExternalLink, FiDownload } from 'react-icons/fi';
+import { FiFileText, FiCheck, FiX, FiShield, FiExternalLink, FiDownload, FiInfo } from 'react-icons/fi';
 import Modal from '../common/Modal';
 import Badge from '../common/Badge';
 
