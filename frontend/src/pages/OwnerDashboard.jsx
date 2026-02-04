@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as ownerService from '../services/ownerService';
+import * as maintenanceService from '../services/maintenanceService';
 import toast, { Toaster } from 'react-hot-toast';
 import {
     FiHome, FiUsers, FiDollarSign, FiCalendar, FiClock,
     FiCheckCircle, FiAlertCircle, FiTrendingUp, FiPlus,
-    FiFileText, FiBell, FiSettings, FiExternalLink, FiSearch
+    FiFileText, FiBell, FiSettings, FiExternalLink, FiSearch,
+    FiTrash2, FiCheck, FiX, FiTool
 } from 'react-icons/fi';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -39,6 +41,8 @@ const OwnerDashboard = () => {
     const [selectedAgreement, setSelectedAgreement] = useState(null);
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [editingProperty, setEditingProperty] = useState(null);
+    const [maintenanceRequests, setMaintenanceRequests] = useState([]);
 
     // Check if owner is trusted (registered > 1 year)
     const isTrusted = user?.created_at ? differenceInYears(new Date(), new Date(user.created_at)) >= 1 : false;
@@ -56,7 +60,8 @@ const OwnerDashboard = () => {
                 ownerService.getBookingRequests('all'),
                 ownerService.getNotifications(true),
                 ownerService.getAgreements('active'),
-                ownerService.getPaymentHistory()
+                ownerService.getPaymentHistory(),
+                maintenanceService.getMaintenanceRequests()
             ]);
 
             const statsRes = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -72,6 +77,7 @@ const OwnerDashboard = () => {
             if (notifsRes) setNotifications(notifsRes.notifications || []);
             if (agreementsRes) setAgreements(agreementsRes.agreements || []);
             if (paymentsRes) setPayments(paymentsRes.payments || []);
+            if (results[6]?.status === 'fulfilled') setMaintenanceRequests(results[6].value.requests || []);
 
             // Log individual failures for debugging
             results.forEach((res, i) => {
@@ -95,12 +101,30 @@ const OwnerDashboard = () => {
 
     const handleAddProperty = async (formData, images) => {
         try {
-            await ownerService.addProperty(formData, images);
-            toast.success('Property listed successfully! Pending admin approval.');
+            if (editingProperty) {
+                await ownerService.updateProperty(editingProperty.property_id, formData);
+                toast.success('Property updated successfully!');
+            } else {
+                await ownerService.addProperty(formData, images);
+                toast.success('Property listed successfully! Pending admin approval.');
+            }
+            setIsAddModalOpen(false);
+            setEditingProperty(null);
             fetchData();
         } catch (err) {
-            toast.error(err.message || 'Failed to add property');
+            toast.error(err.message || 'Failed to save property');
             throw err;
+        }
+    };
+
+    const handleDeleteProperty = async (propertyId) => {
+        if (!window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) return;
+        try {
+            await ownerService.deleteProperty(propertyId);
+            toast.success('Property deleted successfully!');
+            fetchData();
+        } catch (err) {
+            toast.error(err.message || 'Failed to delete property');
         }
     };
 
@@ -147,6 +171,17 @@ const OwnerDashboard = () => {
         }
     };
 
+    const handleUpdateMaintenance = async (requestId, status) => {
+        const notes = window.prompt('Enter updates/notes:');
+        try {
+            await maintenanceService.updateMaintenanceStatus(requestId, { status, notes });
+            toast.success('Maintenance status updated!');
+            fetchData();
+        } catch (err) {
+            toast.error(err.message || 'Failed to update status');
+        }
+    };
+
     const handleCreateAgreement = async (agreementData) => {
         try {
             await ownerService.createAgreement(selectedBooking.booking_id || selectedBooking.request_id, agreementData);
@@ -165,6 +200,7 @@ const OwnerDashboard = () => {
         { id: 'rentals', label: 'Active Rentals', icon: FiCalendar },
         { id: 'payments', label: 'Payments', icon: FiDollarSign },
         { id: 'agreements', label: 'Agreements', icon: FiFileText },
+        { id: 'maintenance', label: 'Maintenance', icon: FiTool },
     ];
 
     // Mock data for charts
@@ -534,8 +570,26 @@ const OwnerDashboard = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <button className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all" title="Settings">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingProperty(property);
+                                                            setIsAddModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                                                        title="Edit Property"
+                                                    >
                                                         <FiSettings />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteProperty(property.property_id);
+                                                        }}
+                                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                        title="Delete Property"
+                                                    >
+                                                        <FiTrash2 />
                                                     </button>
                                                 </div>
                                             </div>
@@ -547,8 +601,12 @@ const OwnerDashboard = () => {
 
                         <AddPropertyModal
                             isOpen={isAddModalOpen}
-                            onClose={() => setIsAddModalOpen(false)}
+                            onClose={() => {
+                                setIsAddModalOpen(false);
+                                setEditingProperty(null);
+                            }}
                             onAdd={handleAddProperty}
+                            property={editingProperty}
                         />
                     </div>
                 )}
@@ -827,6 +885,74 @@ const OwnerDashboard = () => {
                             <p className="text-gray-500">The {tabs.find(t => t.id === activeTab)?.label} section is currently under development to ensure a professional experience.</p>
                             <button onClick={() => setActiveTab('overview')} className="mt-6 text-primary-600 font-bold hover:underline">Return to Overview</button>
                         </div>
+                    </div>
+                )}
+                {/* Maintenance Tab */}
+                {activeTab === 'maintenance' && (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900">Maintenance Requests</h2>
+                                <p className="text-sm text-gray-500">Track and manage repair requests from your tenants</p>
+                            </div>
+                        </div>
+
+                        {maintenanceRequests.length === 0 ? (
+                            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400">
+                                <FiTool className="w-16 h-16 mx-auto mb-4" />
+                                <h3 className="text-lg font-bold text-gray-900 mb-1">No Maintenance Requests</h3>
+                                <p className="text-sm">Requests will appear here once submitted by your tenants.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4">
+                                {maintenanceRequests.map((req) => (
+                                    <div key={req.request_id} className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-md transition-all">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <h3 className="font-bold text-gray-900">{req.title}</h3>
+                                                <Badge variant={
+                                                    req.priority === 'high' ? 'danger' :
+                                                        req.priority === 'medium' ? 'warning' : 'info'
+                                                } size="sm">{req.priority?.toUpperCase()}</Badge>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-2">{req.description}</p>
+                                            <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+                                                <span className="flex items-center gap-1"><FiHome /> {req.property_title}</span>
+                                                <span className="flex items-center gap-1"><FiUsers /> {req.tenant_name} ({req.tenant_phone})</span>
+                                                <span className="flex items-center gap-1"><FiClock /> {format(new Date(req.created_at), 'MMM d, yyyy')}</span>
+                                            </div>
+                                            {req.notes && (
+                                                <p className="text-xs text-blue-600 mt-2 bg-blue-50 p-2 rounded-lg italic">Owner Notes: {req.notes}</p>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 w-full md:w-auto">
+                                            {req.status === 'pending' && (
+                                                <button
+                                                    onClick={() => handleUpdateMaintenance(req.request_id, 'in_progress')}
+                                                    className="flex-1 md:flex-none px-4 py-2 bg-primary-50 text-primary-600 rounded-xl font-bold hover:bg-primary-100 transition-all text-sm"
+                                                >
+                                                    Start Work
+                                                </button>
+                                            )}
+                                            {req.status === 'in_progress' && (
+                                                <button
+                                                    onClick={() => handleUpdateMaintenance(req.request_id, 'completed')}
+                                                    className="flex-1 md:flex-none px-4 py-2 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all text-sm"
+                                                >
+                                                    Mark Resolved
+                                                </button>
+                                            )}
+                                            <Badge variant={
+                                                req.status === 'completed' ? 'success' :
+                                                    req.status === 'in_progress' ? 'primary' : 'warning'
+                                            }>
+                                                {req.status?.replace('_', ' ')?.toUpperCase()}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </main>

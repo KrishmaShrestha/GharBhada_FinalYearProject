@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiPlus, FiX, FiCheck, FiUpload, FiHome, FiDollarSign, FiZap, FiActivity, FiAlertCircle } from 'react-icons/fi';
 import Modal from '../common/Modal';
 import Badge from '../common/Badge';
+import toast from 'react-hot-toast';
 
-const AddPropertyModal = ({ isOpen, onClose, onAdd }) => {
+const AddPropertyModal = ({ isOpen, onClose, onAdd, property = null }) => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -28,6 +29,54 @@ const AddPropertyModal = ({ isOpen, onClose, onAdd }) => {
         amenities: []
     });
     const [images, setImages] = useState([]);
+
+    useEffect(() => {
+        if (property) {
+            setFormData({
+                title: property.title || '',
+                description: property.description || '',
+                property_type: property.property_type || 'apartment',
+                address: property.address || '',
+                city: property.city || '',
+                price_per_month: property.price_per_month || '',
+                security_deposit: property.security_deposit || '',
+                lease_duration_min: property.lease_duration_min || 1,
+                lease_duration_max: property.lease_duration_max || 5,
+                bedrooms: property.bedrooms || 0,
+                bathrooms: property.bathrooms || 0,
+                area_sqft: property.area_sqft || '',
+                has_kitchen: !!property.has_kitchen,
+                has_parking: !!property.has_parking,
+                electricity_rate: property.electricity_rate || '',
+                water_charge: property.water_charge || '',
+                garbage_charge: property.garbage_charge || '',
+                house_rules: property.house_rules || '',
+                amenities: property.amenities || []
+            });
+        } else {
+            setFormData({
+                title: '',
+                description: '',
+                property_type: 'apartment',
+                address: '',
+                city: '',
+                price_per_month: '',
+                security_deposit: '',
+                lease_duration_min: 1,
+                lease_duration_max: 5,
+                bedrooms: 0,
+                bathrooms: 0,
+                area_sqft: '',
+                has_kitchen: true,
+                has_parking: false,
+                electricity_rate: '',
+                water_charge: '',
+                garbage_charge: '',
+                house_rules: '',
+                amenities: []
+            });
+        }
+    }, [property, isOpen]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -108,7 +157,7 @@ const AddPropertyModal = ({ isOpen, onClose, onAdd }) => {
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="List New Property"
+            title={property ? "Edit Property Listing" : "List New Property"}
             size="lg"
             footer={
                 <div className="flex justify-between w-full shadow-sm">
