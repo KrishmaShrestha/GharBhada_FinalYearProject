@@ -43,7 +43,9 @@ const PropertyDetails = () => {
         try {
             await tenantService.submitBookingRequest({
                 property_id: id,
-                ...bookingData
+                ...bookingData,
+                start_date: bookingData.move_in_date,
+                notes: bookingData.message
             });
             toast.success('Booking request sent successfully!');
             setIsBookingModalOpen(false);

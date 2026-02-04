@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as tenantService from '../services/tenantService';
+import * as maintenanceService from '../services/maintenanceService';
 import toast, { Toaster } from 'react-hot-toast';
 import {
     FiHome, FiUsers, FiDollarSign, FiCalendar, FiClock,
     FiCheckCircle, FiAlertCircle, FiTrendingUp, FiPlus,
     FiFileText, FiBell, FiSettings, FiExternalLink, FiSearch,
-    FiFilter, FiMapPin, FiInfo, FiHeart, FiLogOut
+    FiFilter, FiMapPin, FiInfo, FiHeart, FiLogOut,
+    FiTool
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import StatCard from '../components/admin/StatCard';
@@ -17,6 +19,7 @@ import TenantPropertyCard from '../components/common/TenantPropertyCard';
 import DurationSelectionModal from '../components/common/DurationSelectionModal';
 import AgreementReviewModal from '../components/common/AgreementReviewModal';
 import PaymentModal from '../components/common/PaymentModal';
+import MaintenanceModal from '../components/common/MaintenanceModal';
 
 const TenantDashboard = () => {
     const { user, logout } = useAuth();
@@ -26,6 +29,7 @@ const TenantDashboard = () => {
     const [agreements, setAgreements] = useState([]);
     const [payments, setPayments] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [maintenanceRequests, setMaintenanceRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
@@ -34,6 +38,7 @@ const TenantDashboard = () => {
     const [isDurationModalOpen, setIsDurationModalOpen] = useState(false);
     const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [selectedAgreement, setSelectedAgreement] = useState(null);
     const [selectedPayment, setSelectedPayment] = useState(null);
@@ -45,12 +50,13 @@ const TenantDashboard = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [propsData, bookingsData, agreementsData, paymentsData, notifsData] = await Promise.all([
+            const [propsData, bookingsData, agreementsData, paymentsData, notifsData, maintData] = await Promise.all([
                 tenantService.searchProperties(),
                 tenantService.getMyBookings(),
                 tenantService.getMyAgreements(),
                 tenantService.getMyPayments(),
-                tenantService.getNotifications()
+                tenantService.getNotifications(),
+                maintenanceService.getMaintenanceRequests()
             ]);
 
             setProperties(propsData.properties || []);
@@ -58,6 +64,7 @@ const TenantDashboard = () => {
             setAgreements(agreementsData.agreements || []);
             setPayments(paymentsData.payments || []);
             setNotifications(notifsData.notifications || []);
+            setMaintenanceRequests(maintData.requests || []);
         } catch (err) {
             console.error('Error fetching tenant data:', err);
         } finally {
@@ -120,13 +127,13 @@ const TenantDashboard = () => {
         }
     };
 
-    const handleRequestRenewal = async (agreementId) => {
+    const handleMaintenanceSubmit = async (maintData) => {
         try {
-            // Simplified renewal request logic
-            toast.success('Renewal request sent to owner!');
+            await maintenanceService.submitMaintenanceRequest(maintData);
+            toast.success('Maintenance request submitted!');
             fetchData();
         } catch (err) {
-            toast.error('Failed to request renewal');
+            toast.error(err.message || 'Failed to submit request');
         }
     };
 
@@ -135,6 +142,7 @@ const TenantDashboard = () => {
         { id: 'bookings', label: 'My Bookings', icon: FiCalendar },
         { id: 'payments', label: 'Payments', icon: FiDollarSign },
         { id: 'agreements', label: 'Agreements', icon: FiFileText },
+        { id: 'maintenance', label: 'Maintenance', icon: FiTool },
         { id: 'notifications', label: 'Notifications', icon: FiBell },
         { id: 'profile', label: 'My Profile', icon: FiUsers },
     ];
@@ -291,7 +299,7 @@ const TenantDashboard = () => {
                                     <TenantPropertyCard
                                         key={property.property_id}
                                         property={property}
-                                        onClick={() => window.location.href = `/properties/${property.property_id}`}
+                                        onClick={() => navigate(`/properties/${property.property_id}`)}
                                     />
                                 ))}
                             </div>
@@ -525,6 +533,62 @@ const TenantDashboard = () => {
                     </div>
                 )}
 
+                {/* Maintenance Tab */}
+                {activeTab === 'maintenance' && (
+                    <div className="space-y-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-2xl font-black text-gray-900">Maintenance & Repairs</h2>
+                                <p className="text-sm text-gray-500">Report issues and track repair status</p>
+                            </div>
+                            <button
+                                onClick={() => setIsMaintenanceModalOpen(true)}
+                                className="bg-primary-600 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all flex items-center justify-center gap-2"
+                            >
+                                <FiTool /> New Request
+                            </button>
+                        </div>
+
+                        {maintenanceRequests.length === 0 ? (
+                            <div className="bg-white rounded-3xl border border-gray-100 p-20 text-center">
+                                <FiTool size={48} className="mx-auto text-gray-200 mb-4" />
+                                <h3 className="text-lg font-bold text-gray-900">No Maintenance Requests</h3>
+                                <p className="text-gray-500">If you have any issues with your rental, you can report them here.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4">
+                                {maintenanceRequests.map(req => (
+                                    <div key={req.request_id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-primary-500 transition-all">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-bold text-gray-900">{req.title}</h3>
+                                                <Badge variant={
+                                                    req.priority === 'high' ? 'danger' :
+                                                        req.priority === 'medium' ? 'warning' : 'info'
+                                                } size="sm">{req.priority?.toUpperCase()}</Badge>
+                                            </div>
+                                            <p className="text-sm text-gray-500 line-clamp-1 mb-2">{req.description}</p>
+                                            <div className="flex items-center gap-4 text-xs text-gray-400">
+                                                <span>{req.property_title}</span>
+                                                <span>•</span>
+                                                <span>{format(new Date(req.created_at), 'MMM d, yyyy')}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 w-full md:w-auto">
+                                            <Badge variant={
+                                                req.status === 'completed' ? 'success' :
+                                                    req.status === 'in_progress' ? 'primary' : 'warning'
+                                            }>
+                                                {req.status?.replace('_', ' ')?.toUpperCase()}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Integration Modals */}
                 <DurationSelectionModal
                     isOpen={isDurationModalOpen}
@@ -650,6 +714,12 @@ const TenantDashboard = () => {
                         </div>
                     </div>
                 )}
+                <MaintenanceModal
+                    isOpen={isMaintenanceModalOpen}
+                    onClose={() => setIsMaintenanceModalOpen(false)}
+                    onSubmit={handleMaintenanceSubmit}
+                    propertyId={agreements.find(a => a.status === 'active')?.property_id}
+                />
             </main>
         </div>
     );

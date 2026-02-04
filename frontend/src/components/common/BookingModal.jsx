@@ -10,6 +10,7 @@ const BookingModal = ({ isOpen, onClose, property, onSubmit }) => {
         phone: '',
         address: '',
         citizen_number: '',
+        move_in_date: '',
         message: ''
     });
 
@@ -105,6 +106,14 @@ const BookingModal = ({ isOpen, onClose, property, onSubmit }) => {
                                 type="text" name="address" value={formData.address} onChange={handleChange}
                                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary-500 transition-all"
                                 placeholder="Your current city/area"
+                            />
+                        </div>
+                        <div>
+                            <label className="label">Desired Move-in Date *</label>
+                            <input
+                                type="date" name="move_in_date" value={formData.move_in_date} onChange={handleChange}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary-500 transition-all"
+                                required
                             />
                         </div>
                     </div>
