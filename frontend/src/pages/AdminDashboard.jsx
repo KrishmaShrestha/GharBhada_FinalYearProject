@@ -35,7 +35,7 @@ const AdminDashboard = () => {
         fetchDashboardData();
     }, []);
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (showToast = false) => {
         setLoading(true);
         try {
             const [statsData, pendingUsersData, pendingPropsData] = await Promise.all([
@@ -47,11 +47,30 @@ const AdminDashboard = () => {
             setStats(statsData.stats);
             setPendingUsers(pendingUsersData.users || []);
             setPendingProperties(pendingPropsData.properties || []);
+            if (showToast) toast.success('Dashboard data refreshed');
         } catch (err) {
             toast.error(err.message || 'Failed to load dashboard data');
+            throw err;
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleRefresh = async () => {
+        const refreshPromise = (async () => {
+            await fetchDashboardData();
+            if (activeTab === 'users') {
+                await fetchAllUsers();
+            } else if (activeTab === 'properties') {
+                await fetchAllProperties();
+            }
+        })();
+
+        toast.promise(refreshPromise, {
+            loading: 'Refreshing data...',
+            success: 'Data refreshed successfully',
+            error: (err) => `Refresh failed: ${err.message || 'Unknown error'}`
+        });
     };
 
     const fetchAllUsers = async () => {
@@ -204,10 +223,10 @@ const AdminDashboard = () => {
                             <p className="text-gray-600 mt-1">Welcome back, {user?.full_name}</p>
                         </div>
                         <button
-                            onClick={fetchDashboardData}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            onClick={handleRefresh}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md active:scale-95"
                         >
-                            <FiRefreshCw className="w-4 h-4" />
+                            <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                             Refresh
                         </button>
                     </div>
@@ -558,7 +577,17 @@ const AdminDashboard = () => {
                 {/* Users Tab */}
                 {activeTab === 'users' && (
                     <div className="space-y-6">
-                        {/* Search and Filters */}
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
+                            <button
+                                onClick={fetchAllUsers}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Refresh Users"
+                            >
+                                <FiRefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                            </button>
+                        </div>
+                        {/* Search and Filters Status */}
                         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="md:col-span-2">
@@ -670,9 +699,9 @@ const AdminDashboard = () => {
                                 <button
                                     onClick={fetchAllProperties}
                                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                    title="Refresh List"
+                                    title="Refresh Properties"
                                 >
-                                    <FiRefreshCw className="w-5 h-5" />
+                                    <FiRefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                                 </button>
                                 <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                                     <FiDownload className="w-4 h-4" />
