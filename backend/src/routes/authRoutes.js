@@ -18,7 +18,9 @@ const registerValidation = [
     body('citizen_number').trim().notEmpty().withMessage('Citizenship number is required'),
     body('street_address').trim().notEmpty().withMessage('Street address is required'),
     body('city').trim().notEmpty().withMessage('City is required'),
-    body('district').trim().notEmpty().withMessage('District is required')
+    body('district').trim().notEmpty().withMessage('District is required'),
+    body('bank_name').optional().trim(),
+    body('bank_account_number').optional().trim()
 ];
 
 const loginValidation = [
@@ -36,13 +38,10 @@ router.post('/register', upload.single('id_proof'), registerValidation, async (r
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: 'ID proof image is required' });
-        }
-
         const {
             email, password, full_name, phone, role,
-            citizen_number, street_address, city, district, postal_code
+            citizen_number, street_address, city, district, postal_code,
+            bank_name, bank_account_number
         } = req.body;
 
         const id_proof_path = `/uploads/documents/${req.file.filename}`;
@@ -73,11 +72,13 @@ router.post('/register', upload.single('id_proof'), registerValidation, async (r
                 `INSERT INTO users (
                     email, password_hash, full_name, phone, role, 
                     citizen_number, street_address, city, district, postal_code,
+                    bank_name, bank_account_number,
                     approval_status, is_profile_complete
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     email, password_hash, full_name, phone, role,
                     citizen_number, street_address, city, district, postal_code,
+                    bank_name, bank_account_number,
                     'pending', true
                 ]
             );

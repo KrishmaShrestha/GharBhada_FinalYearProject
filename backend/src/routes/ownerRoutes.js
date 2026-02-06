@@ -27,4 +27,7 @@ router.get('/notifications', ownerController.getNotifications);
 // @route   GET /api/owner/payments
 router.get('/payments', ownerController.getPaymentHistory);
 
+// @route   POST /api/owner/record-payment
+router.post('/record-payment', ownerController.recordPayment);
+
 module.exports = router;

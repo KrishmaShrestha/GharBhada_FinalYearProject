@@ -9,13 +9,23 @@ const Dashboard = () => {
     useEffect(() => {
         // Redirect to role-specific dashboard
         if (user) {
-            if (user.role === 'admin') {
+            const role = user.role?.toLowerCase();
+            console.log('[DEBUG] Dashboard Page - user role:', role);
+
+            if (role === 'admin') {
+                console.log('[DEBUG] Dashboard Page - Redirecting to /admin/dashboard');
                 navigate('/admin/dashboard', { replace: true });
-            } else if (user.role === 'owner') {
+            } else if (role === 'owner') {
+                console.log('[DEBUG] Dashboard Page - Redirecting to /owner/dashboard');
                 navigate('/owner/dashboard', { replace: true });
-            } else {
+            } else if (role === 'tenant') {
+                console.log('[DEBUG] Dashboard Page - Redirecting to /tenant/dashboard');
                 navigate('/tenant/dashboard', { replace: true });
+            } else {
+                console.warn('[DEBUG] Dashboard Page - Unknown role:', role);
             }
+        } else {
+            console.warn('[DEBUG] Dashboard Page - No user in state');
         }
     }, [user, navigate]);
 

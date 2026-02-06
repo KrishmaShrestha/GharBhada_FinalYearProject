@@ -20,14 +20,17 @@ const AuthSuccess = () => {
                 setAuth(token, userData);
 
                 // Redirect based on completion status and role
-                if (userData.role === 'admin') {
+                const role = userData.role?.toLowerCase();
+                if (role === 'admin') {
                     navigate('/admin/dashboard');
                 } else if (!userData.is_profile_complete) {
                     navigate('/complete-profile');
-                } else if (userData.role === 'owner') {
+                } else if (role === 'owner') {
                     navigate('/owner/dashboard');
-                } else {
+                } else if (role === 'tenant') {
                     navigate('/tenant/dashboard');
+                } else {
+                    navigate('/dashboard');
                 }
             } catch (error) {
                 console.error('Error parsing user data:', error);

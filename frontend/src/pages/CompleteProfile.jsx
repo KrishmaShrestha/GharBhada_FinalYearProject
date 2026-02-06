@@ -25,7 +25,11 @@ const CompleteProfile = () => {
         } else if (user.role === 'admin') {
             navigate('/admin/dashboard');
         } else if (user.is_profile_complete) {
-            navigate('/login?status=pending');
+            if (user.approval_status === 'approved') {
+                navigate(`/${user.role}/dashboard`);
+            } else {
+                navigate('/login?status=pending');
+            }
         }
     }, [user, navigate]);
 

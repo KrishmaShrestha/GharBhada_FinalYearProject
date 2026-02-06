@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as tenantService from '../services/tenantService';
 import * as maintenanceService from '../services/maintenanceService';
@@ -22,6 +23,7 @@ import PaymentModal from '../components/common/PaymentModal';
 import MaintenanceModal from '../components/common/MaintenanceModal';
 
 const TenantDashboard = () => {
+    const navigate = useNavigate();
     const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('search');
     const [properties, setProperties] = useState([]);
@@ -71,6 +73,28 @@ const TenantDashboard = () => {
             setLoading(false);
         }
     };
+
+    // Auto-open agreement modal if there's a pending agreement
+    useEffect(() => {
+        if (!loading && agreements.length > 0) {
+            const pendingAgreement = agreements.find(agm =>
+                agm.status === 'agreement_pending' || agm.status === 'pending'
+            );
+
+            if (pendingAgreement && !isAgreementModalOpen) {
+                // Small delay to ensure UI is ready
+                setTimeout(() => {
+                    setSelectedAgreement(pendingAgreement);
+                    setIsAgreementModalOpen(true);
+                    setActiveTab('agreements'); // Switch to agreements tab
+                    toast.success('You have a new rental agreement to review!', {
+                        duration: 5000,
+                        icon: '📄'
+                    });
+                }, 1000);
+            }
+        }
+    }, [loading, agreements]);
 
     const handleDurationSubmit = async (durationData) => {
         try {

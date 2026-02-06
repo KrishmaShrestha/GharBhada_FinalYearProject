@@ -52,13 +52,18 @@ const Login = () => {
 
         if (result.success) {
             // Redirect based on role
-            const role = result.user.role;
+            const role = result.user.role?.toLowerCase();
+            console.log('Login successful, role:', role);
+
             if (role === 'admin') {
                 navigate('/admin/dashboard');
             } else if (role === 'owner') {
                 navigate('/owner/dashboard');
-            } else {
+            } else if (role === 'tenant') {
                 navigate('/tenant/dashboard');
+            } else {
+                console.warn('Unknown role, redirecting to generic dashboard:', role);
+                navigate('/dashboard');
             }
         } else {
             setError(result.message);

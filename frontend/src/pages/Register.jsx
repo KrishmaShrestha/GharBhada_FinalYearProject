@@ -19,9 +19,11 @@ const Register = () => {
         district: '',
         postal_code: '',
 
-        // Step 3: Verification
+        // Step 3: Verification & Bank
         citizen_number: '',
         id_proof: null,
+        bank_name: '',
+        bank_account_number: '',
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -84,6 +86,12 @@ const Register = () => {
             if (!formData.id_proof) {
                 setError('Please upload your ID proof');
                 return false;
+            }
+            if (formData.role === 'owner') {
+                if (!formData.bank_name || !formData.bank_account_number) {
+                    setError('Please provide bank details for rental payments');
+                    return false;
+                }
             }
         }
 
@@ -162,7 +170,7 @@ const Register = () => {
                 <div className={`step-circle ${step >= 3 ? 'step-active' : 'step-pending'}`}>
                     3
                 </div>
-                <span className="text-xs font-medium">Verification</span>
+                <span className="text-xs font-medium">{formData.role === 'owner' ? 'Verification & Bank' : 'Verification'}</span>
             </div>
         </div>
     );
@@ -351,6 +359,36 @@ const Register = () => {
                     </label>
                 </div>
             </div>
+
+            {formData.role === 'owner' && (
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <p className="text-sm font-bold text-gray-700">🏦 Payment Details (for Rent Collection)</p>
+                    <div className="grid grid-cols-1 gap-4">
+                        <div>
+                            <label className="label">Bank Name *</label>
+                            <input
+                                type="text"
+                                name="bank_name"
+                                value={formData.bank_name}
+                                onChange={handleChange}
+                                className="input-field"
+                                placeholder="e.g., Nabil Bank"
+                            />
+                        </div>
+                        <div>
+                            <label className="label">Account Number *</label>
+                            <input
+                                type="text"
+                                name="bank_account_number"
+                                value={formData.bank_account_number}
+                                onChange={handleChange}
+                                className="input-field"
+                                placeholder="Enter your bank account number"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="alert alert-info">
                 <p className="text-sm font-medium">📋 Verification Process</p>

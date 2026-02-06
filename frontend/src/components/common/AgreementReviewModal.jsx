@@ -46,12 +46,12 @@ const AgreementReviewModal = ({ isOpen, onClose, agreement, onApprove, onDecline
                             <div>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Landlord / Owner</p>
                                 <p className="font-black text-gray-900">{agreement.owner_name}</p>
-                                <p className="text-xs text-gray-500">{agreement.owner_contact}</p>
+                                <p className="text-xs text-gray-500">{agreement.owner_phone}</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Tenant</p>
                                 <p className="font-black text-gray-900">{agreement.tenant_name}</p>
-                                <p className="text-xs text-gray-500">{agreement.tenant_contact}</p>
+                                <p className="text-xs text-gray-500">{agreement.tenant_phone}</p>
                             </div>
                         </div>
 
@@ -86,9 +86,17 @@ const AgreementReviewModal = ({ isOpen, onClose, agreement, onApprove, onDecline
                             </div>
                         </div>
 
-                        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3 italic text-blue-800 text-xs">
-                            <FiInfo className="flex-shrink-0 mt-0.5" />
-                            <p>By clicking "Approve", you legally agree to the terms mentioned above and commit to paying the security deposit to confirm your booking.</p>
+                        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3 text-blue-800 text-xs shadow-sm">
+                            <div className="flex-shrink-0 mt-0.5 text-lg">🏦</div>
+                            <div>
+                                <p className="font-black uppercase tracking-wider mb-1">Owner Payment Details</p>
+                                <p>Please transfer the deposit of <span className="font-bold">Rs. {agreement.deposit_amount?.toLocaleString()}</span> to:</p>
+                                <div className="mt-2 p-3 bg-white/60 rounded-xl border border-blue-200">
+                                    <p><span className="text-gray-500">Bank:</span> <span className="font-bold">{agreement.bank_name || 'Global IME Bank'}</span></p>
+                                    <p><span className="text-gray-500">A/C Number:</span> <span className="font-bold tracking-widest">{agreement.bank_account_number || '001002003004'}</span></p>
+                                </div>
+                                <p className="mt-3 italic">By clicking "Approve", you legally agree to the terms mentioned above and commit to the transfer.</p>
+                            </div>
                         </div>
                     </div>
 

@@ -6,7 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import {
     FiHome, FiMapPin, FiCalendar, FiZap, FiDroplet, FiTrash2,
     FiShield, FiArrowLeft, FiHeart, FiShare2, FiInfo, FiCheck,
-    FiUser, FiActivity, FiClock
+    FiUser, FiActivity, FiClock, FiPlus
 } from 'react-icons/fi';
 import Badge from '../components/common/Badge';
 import BookingModal from '../components/common/BookingModal';
@@ -72,7 +72,7 @@ const PropertyDetails = () => {
         );
     }
 
-    const isTrusted = property.owner_trust_level === 'trusted' || property.owner_is_trusted;
+    const isTrusted = property.is_trusted_owner === 1 || property.is_trusted_owner === true;
 
     return (
         <div className="min-h-screen bg-[#F8FAFC]">
@@ -265,7 +265,7 @@ const PropertyDetails = () => {
                                         <h4 className="font-bold text-gray-900">{property.owner_name || 'Property Owner'}</h4>
                                         {isTrusted && <FiShield size={14} className="text-yellow-500" />}
                                     </div>
-                                    <p className="text-xs text-gray-500 mb-1">Member since {property.owner_joined_date || '2023'}</p>
+                                    <p className="text-xs text-gray-500 mb-1">Member since {property.owner_since ? new Date(property.owner_since).getFullYear() : '2024'}</p>
                                     <Badge variant={isTrusted ? 'warning' : 'default'} size="sm">
                                         {isTrusted ? 'TRUSTED OWNER' : 'REGULAR OWNER'}
                                     </Badge>

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { pool } = require('../config/database');
+const { createNotification } = require('../utils/notificationHelper');
 
 // @route   GET /api/bookings
 // @desc    Get bookings for current user
@@ -65,9 +66,13 @@ router.post('/', authenticate, authorize('tenant'), async (req, res) => {
             full_name, phone, address, citizen_number // Mapped from frontend
         } = req.body;
 
+        if (!property_id || !start_date) {
+            return res.status(400).json({ success: false, message: 'Property ID and Start Date are required' });
+        }
+
         // Get property details
         const [properties] = await pool.query(
-            'SELECT owner_id, price_per_month, security_deposit, is_available FROM properties WHERE property_id = ?',
+            'SELECT owner_id, title, price_per_month, security_deposit, is_available FROM properties WHERE property_id = ?',
             [property_id]
         );
 
@@ -99,14 +104,25 @@ router.post('/', authenticate, authorize('tenant'), async (req, res) => {
             ]
         );
 
+        const bookingId = result.insertId;
+
+        // Notify Owner
+        await createNotification(
+            property.owner_id,
+            'New Booking Request',
+            `You have a new booking request for "${properties[0].title || 'your property'}" from ${req.user.full_name}.`,
+            'booking',
+            bookingId
+        );
+
         res.status(201).json({
             success: true,
             message: 'Booking request created successfully',
-            booking_id: result.insertId
+            booking_id: bookingId
         });
     } catch (error) {
         console.error('Create booking error:', error);
-        res.status(500).json({ success: false, message: 'Failed to create booking' });
+        res.status(500).json({ success: false, message: 'Failed to create booking', error: error.message });
     }
 });
 
@@ -138,12 +154,43 @@ router.put('/:id/duration', authenticate, authorize('tenant'), async (req, res) 
     }
 });
 
+// @route   PUT /api/bookings/:id/approve-duration
+// @desc    Owner approves/rejects the lease duration
+// @access  Private/Owner
+router.put('/:id/approve-duration', authenticate, authorize('owner'), async (req, res) => {
+    try {
+        const { approved } = req.body;
+
+        const [bookings] = await pool.query(
+            'SELECT owner_id, status FROM bookings WHERE booking_id = ?',
+            [req.params.id]
+        );
+
+        if (bookings.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
+        if (bookings[0].owner_id !== req.user.user_id) return res.status(403).json({ success: false, message: 'Unauthorized' });
+        if (bookings[0].status !== 'duration_pending') return res.status(400).json({ success: false, message: 'No duration pending approval' });
+
+        await pool.query(
+            'UPDATE bookings SET status = ?, approved_duration = ?, duration_approval_date = NOW() WHERE booking_id = ?',
+            [approved ? 'duration_approved' : 'duration_rejected', approved, req.params.id]
+        );
+
+        res.json({
+            success: true,
+            message: approved ? 'Duration approved successfully' : 'Duration rejected'
+        });
+    } catch (error) {
+        console.error('Approve duration error:', error);
+        res.status(500).json({ success: false, message: 'Failed to approve duration' });
+    }
+});
+
 // @route   PUT /api/bookings/:id/status
 // @desc    Update booking status (Accept/Reject by Owner)
 // @access  Private/Owner
 router.put('/:id/status', authenticate, authorize('owner', 'admin'), async (req, res) => {
     try {
-        const { status } = req.body;
+        const { status, reason } = req.body;
 
         const [bookings] = await pool.query(
             'SELECT owner_id, property_id FROM bookings WHERE booking_id = ?',
@@ -159,8 +206,8 @@ router.put('/:id/status', authenticate, authorize('owner', 'admin'), async (req,
         }
 
         await pool.query(
-            'UPDATE bookings SET status = ?, approved_date = ? WHERE booking_id = ?',
-            [status, status === 'accepted' ? new Date() : null, req.params.id]
+            'UPDATE bookings SET status = ?, approved_date = ?, rejection_reason = ? WHERE booking_id = ?',
+            [status, status === 'accepted' ? new Date() : null, reason || null, req.params.id]
         );
 
         res.json({
@@ -194,7 +241,7 @@ router.post('/:id/agreement', authenticate, authorize('owner'), async (req, res)
                 booking_id, property_id, tenant_id, owner_id, 
                 base_rent, deposit_amount, electricity_rate, water_bill, garbage_bill,
                 rules_and_regulations, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_tenant')`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agreement_pending')`,
             [
                 req.params.id, bookings[0].property_id, bookings[0].tenant_id, req.user.user_id,
                 bookings[0].monthly_rent, security_deposit || 5000,
@@ -205,6 +252,15 @@ router.post('/:id/agreement', authenticate, authorize('owner'), async (req, res)
 
         // Update booking status
         await pool.query('UPDATE bookings SET status = "agreement_pending" WHERE booking_id = ?', [req.params.id]);
+
+        // Notify Tenant
+        await createNotification(
+            bookings[0].tenant_id,
+            'Agreement Received',
+            `The owner has sent you a rental agreement for "${bookings[0].property_title || 'the property'}". Please review and sign it.`,
+            'agreement',
+            req.params.id
+        );
 
         res.json({ success: true, message: 'Agreement sent to tenant' });
     } catch (error) {

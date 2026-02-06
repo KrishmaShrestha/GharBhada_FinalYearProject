@@ -253,6 +253,18 @@ export const getAgreementDetails = async (agreementId) => {
     }
 };
 
+export const updateAgreementStatus = async (agreementId, status) => {
+    try {
+        const response = await axios.put(`${API_URL}/agreements/${agreementId}/status`,
+            { status },
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || { message: 'Failed to update agreement status' };
+    }
+};
+
 export const signAgreement = async (agreementId) => {
     try {
         const response = await axios.post(`${API_URL}/owner/agreements/${agreementId}/sign`, {}, {
@@ -302,9 +314,9 @@ export const getPaymentSummary = async (period = 'month') => {
     }
 };
 
-export const recordPayment = async (paymentId, paymentData) => {
+export const recordPayment = async (paymentData) => {
     try {
-        const response = await axios.post(`${API_URL}/owner/payments/${paymentId}/record`, paymentData, {
+        const response = await axios.post(`${API_URL}/owner/record-payment`, paymentData, {
             headers: getAuthHeader()
         });
         return response.data;

@@ -1,4 +1,5 @@
 const { pool } = require('../config/database');
+console.log('DEBUG: ownerController.js is loading - v2-FIXED-SQL');
 
 // ==================== DASHBOARD STATS ====================
 exports.getDashboardStats = async (req, res) => {
@@ -60,7 +61,8 @@ exports.getBookingRequests = async (req, res) => {
         const { status = 'pending' } = req.query;
 
         let query = `
-            SELECT b.*, p.title as property_title, u.full_name as tenant_name, u.email as tenant_email
+            SELECT b.*, p.title as property_title, u.full_name as tenant_name, u.email as tenant_email,
+            u.phone as tenant_phone, u.citizen_number as tenant_citizen_number, u.street_address as tenant_address
             FROM bookings b
             JOIN properties p ON b.property_id = p.property_id
             JOIN users u ON b.tenant_id = u.user_id
@@ -186,11 +188,13 @@ exports.getNotifications = async (req, res) => {
 exports.getPaymentHistory = async (req, res) => {
     try {
         const ownerId = req.user.user_id;
+        // FIXED QUERY VERSION 2
         const [payments] = await pool.query(`
             SELECT p.*, u.full_name as tenant_name, pr.title as property_title
             FROM payments p
             JOIN users u ON p.tenant_id = u.user_id
-            JOIN properties pr ON p.property_id = pr.property_id
+            JOIN bookings b ON p.booking_id = b.booking_id
+            JOIN properties pr ON b.property_id = pr.property_id
             WHERE p.owner_id = ?
             ORDER BY p.payment_date DESC
         `, [ownerId]);
@@ -202,6 +206,67 @@ exports.getPaymentHistory = async (req, res) => {
     } catch (error) {
         console.error('Get owner payments error:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch payments' });
+    }
+};
+
+// ==================== RECORD PAYMENT ====================
+exports.recordPayment = async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const { booking_id, amount, payment_type, payment_method, notes, electricity_units } = req.body;
+        const ownerId = req.user.user_id;
+
+        // Verify booking ownership
+        const [bookings] = await connection.query(
+            'SELECT * FROM bookings WHERE booking_id = ? AND owner_id = ?',
+            [booking_id, ownerId]
+        );
+
+        if (bookings.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ success: false, message: 'Booking not found or unauthorized' });
+        }
+
+        // Map frontend payment types to DB enum
+        let dbPaymentType = payment_type;
+        if (payment_type === 'deposit') dbPaymentType = 'security_deposit';
+        if (payment_type === 'monthly_rent') dbPaymentType = 'rent';
+
+        // Record the payment
+        const [result] = await connection.query(
+            `INSERT INTO payments (booking_id, tenant_id, owner_id, amount, payment_type, payment_method, payment_status, notes, payment_date)
+             VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, NOW())`,
+            [booking_id, tenantId, ownerId, amount, dbPaymentType || 'rent', payment_method || 'bank_transfer', notes]
+        );
+
+        // If it's a deposit payment, activate the booking and agreement
+        if (payment_type === 'security_deposit' || payment_type === 'deposit') {
+            await connection.query(
+                'UPDATE bookings SET status = "active" WHERE booking_id = ?',
+                [booking_id]
+            );
+
+            // Also update any pending agreements for this booking to active if not already
+            await connection.query(
+                'UPDATE rental_agreements SET status = "active" WHERE booking_id = ? AND status = "agreement_pending"',
+                [booking_id]
+            );
+        }
+
+        await connection.commit();
+        res.json({
+            success: true,
+            message: 'Payment recorded successfully',
+            payment_id: result.insertId
+        });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Record payment error:', error);
+        res.status(500).json({ success: false, message: 'Failed to record payment', error: error.message });
+    } finally {
+        connection.release();
     }
 };
 

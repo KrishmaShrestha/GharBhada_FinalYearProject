@@ -51,7 +51,7 @@ passport.use(new GoogleStrategy({
             // Create new user (flag as incomplete)
             const [result] = await pool.query(
                 'INSERT INTO users (email, google_id, full_name, role, profile_image, approval_status, is_active, is_profile_complete) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [email, googleId, fullName, role, profileImage, 'pending', true, false]
+                [email, googleId, fullName, role.toLowerCase(), profileImage, 'pending', true, false]
             );
 
             const [newUser] = await pool.query(

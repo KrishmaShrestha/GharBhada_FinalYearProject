@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './common/NotificationBell';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -26,10 +27,11 @@ const Navbar = () => {
                         )}
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-6">
                         {user ? (
                             <>
-                                <span className="text-gray-700">Hello, {user.full_name}</span>
+                                <NotificationBell />
+                                <span className="hidden sm:inline-block text-sm font-black text-gray-900 uppercase tracking-tighter">Hello, {user.full_name}</span>
                                 <button
                                     onClick={logout}
                                     className="btn-secondary"

@@ -3,7 +3,7 @@ import Badge from './Badge';
 
 const TenantPropertyCard = ({ property, onClick }) => {
     // Determine if owner is trusted (in real app, this would come from the property object or owner association)
-    const isOwnerTrusted = property.owner_trust_level === 'trusted' || property.owner_is_trusted;
+    const isOwnerTrusted = property.is_trusted_owner === 1 || property.is_trusted_owner === true;
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg transition-all group flex flex-col h-full cursor-pointer" onClick={onClick}>
