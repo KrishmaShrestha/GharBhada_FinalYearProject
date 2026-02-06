@@ -62,9 +62,11 @@ router.put('/:id/respond', authenticate, authorize('tenant'), async (req, res) =
         const { status } = req.body; // 'approved' or 'rejected'
 
         const [agreements] = await pool.query(
-            `SELECT a.*, p.title as property_title 
+            `SELECT a.*, p.title as property_title, p.address, p.city,
+             o.full_name as owner_name, o.bank_name, o.bank_account_number
              FROM rental_agreements a 
              JOIN properties p ON a.property_id = p.property_id 
+             JOIN users o ON a.owner_id = o.user_id
              WHERE a.agreement_id = ?`,
             [req.params.id]
         );
@@ -72,6 +74,7 @@ router.put('/:id/respond', authenticate, authorize('tenant'), async (req, res) =
         if (agreements.length === 0) return res.status(404).json({ success: false, message: 'Agreement not found' });
         if (agreements[0].tenant_id !== req.user.user_id) return res.status(403).json({ success: false, message: 'Unauthorized' });
 
+        const agreement = agreements[0];
         const newStatus = status === 'approved' ? 'active' : 'terminated';
         const signatureDate = status === 'approved' ? new Date() : null;
 
@@ -84,20 +87,40 @@ router.put('/:id/respond', authenticate, authorize('tenant'), async (req, res) =
         if (status === 'approved') {
             await pool.query(
                 'UPDATE bookings SET status = "payment_pending" WHERE booking_id = ?',
-                [agreements[0].booking_id]
+                [agreement.booking_id]
+            );
+
+            // Notify Owner about approval
+            await createNotification(
+                agreement.owner_id,
+                'Agreement Signed! ✅',
+                `${req.user.full_name} has approved and signed the rental agreement for "${agreement.property_title}". They will now proceed with the security deposit payment.`,
+                'agreement',
+                req.params.id
+            );
+        } else {
+            // Tenant declined the agreement
+            await pool.query(
+                'UPDATE bookings SET status = "cancelled" WHERE booking_id = ?',
+                [agreement.booking_id]
+            );
+
+            // Notify Owner about decline
+            await createNotification(
+                agreement.owner_id,
+                'Agreement Declined',
+                `${req.user.full_name} has declined the rental agreement for "${agreement.property_title}". The booking has been cancelled.`,
+                'agreement',
+                req.params.id
             );
         }
 
-        // Notify Owner
-        await createNotification(
-            agreements[0].owner_id,
-            `Agreement ${status === 'approved' ? 'Signed' : 'Declined'}`,
-            `Tenant ${req.user.full_name} has ${status} the rental agreement for "${agreements[0].property_title || 'your property'}".`,
-            'agreement',
-            req.params.id
-        );
-
-        res.json({ success: true, message: `Agreement ${status} successfully` });
+        res.json({
+            success: true,
+            message: status === 'approved'
+                ? 'Agreement approved! Please proceed with deposit payment.'
+                : 'Agreement declined successfully.'
+        });
     } catch (error) {
         console.error('Respond to agreement error:', error);
         res.status(500).json({ success: false, message: 'Failed to respond to agreement' });

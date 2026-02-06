@@ -133,3 +133,17 @@ export const getNotifications = async () => {
         throw error.response?.data || { message: 'Failed to fetch notifications' };
     }
 };
+// ==================== USER PROFILE ====================
+export const updateProfile = async (formData) => {
+    try {
+        const response = await axios.put(`${API_URL}/users/profile`, formData, {
+            headers: {
+                ...getAuthHeader(),
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || { message: 'Failed to update profile' };
+    }
+};

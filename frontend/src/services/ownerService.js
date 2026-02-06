@@ -179,10 +179,16 @@ export const getBookingRequestDetails = async (requestId) => {
     }
 };
 
-export const acceptBookingRequest = async (requestId) => {
+export const acceptBookingRequest = async (requestId, agreementTerms = {}) => {
     try {
         const response = await axios.put(`${API_URL}/bookings/${requestId}/status`,
-            { status: 'accepted' },
+            {
+                status: 'accepted',
+                electricity_rate: agreementTerms.electricity_rate,
+                water_bill: agreementTerms.water_bill,
+                garbage_bill: agreementTerms.garbage_bill,
+                rules_and_regulations: agreementTerms.rules_and_regulations
+            },
             { headers: getAuthHeader() }
         );
         return response.data;

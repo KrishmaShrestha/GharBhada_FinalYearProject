@@ -79,6 +79,37 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const refreshUser = async () => {
+        try {
+            const response = await api.get('/auth/me');
+            if (response.data.success) {
+                const updatedUser = response.data.user;
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                setUser(updatedUser);
+            }
+        } catch (error) {
+            console.error('Failed to refresh user:', error);
+        }
+    };
+
+    const updateProfile = async (formData) => {
+        try {
+            const response = await api.put('/users/profile', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            if (response.data.success) {
+                await refreshUser();
+                return { success: true, message: response.data.message };
+            }
+            return { success: false, message: response.data.message };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to update profile'
+            };
+        }
+    };
+
     const setAuth = (token, user) => {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -92,6 +123,8 @@ export const AuthProvider = ({ children }) => {
         register,
         setAuth,
         completeProfile,
+        refreshUser,
+        updateProfile,
         logout,
         isAuthenticated: !!user,
     };

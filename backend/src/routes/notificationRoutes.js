@@ -44,4 +44,44 @@ router.put('/:id/read', authenticate, async (req, res) => {
     }
 });
 
+// @route   PUT /api/notifications/mark-all-read
+// @desc    Mark all notifications as read
+// @access  Private
+router.put('/mark-all-read', authenticate, async (req, res) => {
+    try {
+        await pool.query(
+            'UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE',
+            [req.user.user_id]
+        );
+
+        res.json({
+            success: true,
+            message: 'All notifications marked as read'
+        });
+    } catch (error) {
+        console.error('Mark all notifications read error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update notifications' });
+    }
+});
+
+// @route   GET /api/notifications/unread-count
+// @desc    Get count of unread notifications
+// @access  Private
+router.get('/unread-count', authenticate, async (req, res) => {
+    try {
+        const [result] = await pool.query(
+            'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE',
+            [req.user.user_id]
+        );
+
+        res.json({
+            success: true,
+            count: result[0].count
+        });
+    } catch (error) {
+        console.error('Get unread count error:', error);
+        res.status(500).json({ success: false, message: 'Failed to get unread count' });
+    }
+});
+
 module.exports = router;

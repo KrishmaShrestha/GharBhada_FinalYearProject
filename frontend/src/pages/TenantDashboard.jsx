@@ -22,9 +22,19 @@ import AgreementReviewModal from '../components/common/AgreementReviewModal';
 import PaymentModal from '../components/common/PaymentModal';
 import MaintenanceModal from '../components/common/MaintenanceModal';
 
+const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    try {
+        return format(new Date(dateStr), 'MMM d, yyyy');
+    } catch (err) {
+        console.error('Invalid date:', dateStr);
+        return 'N/A';
+    }
+};
+
 const TenantDashboard = () => {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
+    const { user, logout, updateProfile } = useAuth();
     const [activeTab, setActiveTab] = useState('search');
     const [properties, setProperties] = useState([]);
     const [bookings, setBookings] = useState([]);
@@ -98,7 +108,7 @@ const TenantDashboard = () => {
 
     const handleDurationSubmit = async (durationData) => {
         try {
-            await tenantService.updateBookingDuration(selectedBooking.request_id || selectedBooking.booking_id, {
+            await tenantService.updateBookingDuration(selectedBooking.booking_id || selectedBooking.request_id, {
                 rental_years: durationData.years,
                 rental_months: durationData.months
             });
@@ -216,8 +226,19 @@ const TenantDashboard = () => {
                                 <p className="text-sm font-bold text-gray-900">{user?.full_name}</p>
                                 <p className="text-xs text-gray-500 capitalize">{user?.role} Account</p>
                             </div>
-                            <div className="w-10 h-10 rounded-xl bg-primary-50 border-2 border-primary-200 flex items-center justify-center text-primary-700 font-bold">
-                                {user?.full_name?.charAt(0)}
+                            <div className="w-10 h-10 rounded-xl bg-primary-50 border-2 border-primary-200 flex items-center justify-center text-primary-700 font-bold overflow-hidden">
+                                {user?.profile_image ? (
+                                    <img
+                                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.src = `https://ui-avatars.com/api/?name=${user?.full_name}&background=random`;
+                                        }}
+                                    />
+                                ) : (
+                                    user?.full_name?.charAt(0)
+                                )}
                             </div>
                         </div>
                     </div>
@@ -350,7 +371,7 @@ const TenantDashboard = () => {
                         ) : (
                             <div className="space-y-4">
                                 {bookings.map(booking => (
-                                    <div key={booking.request_id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
+                                    <div key={booking.booking_id || booking.request_id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
                                         <div className="flex items-center gap-6">
                                             <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
                                                 <img src={booking.property_image} alt="" className="w-full h-full object-cover" />
@@ -359,7 +380,7 @@ const TenantDashboard = () => {
                                                 <h4 className="font-bold text-gray-900 text-lg">{booking.property_title}</h4>
                                                 <p className="text-sm text-gray-500 mb-2">{booking.property_address}</p>
                                                 <div className="flex items-center gap-4">
-                                                    <span className="text-xs text-gray-400 flex items-center gap-1"><FiCalendar /> {format(new Date(booking.requested_at), 'MMM d, yyyy')}</span>
+                                                    <span className="text-xs text-gray-400 flex items-center gap-1"><FiCalendar /> {formatDate(booking.created_at || booking.requested_at || booking.booking_date)}</span>
                                                     <Badge variant={
                                                         booking.status === 'pending' ? 'warning' :
                                                             booking.status === 'accepted' ? 'primary' :
@@ -683,8 +704,50 @@ const TenantDashboard = () => {
                     <div className="max-w-4xl mx-auto space-y-8">
                         <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
                             <div className="flex flex-col md:flex-row items-center gap-8">
-                                <div className="w-32 h-32 rounded-3xl bg-primary-600 border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-black">
-                                    {user?.full_name?.charAt(0)}
+                                <div className="relative group">
+                                    <div className="w-32 h-32 rounded-3xl bg-primary-600 border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-black overflow-hidden">
+                                        {user?.profile_image ? (
+                                            <img
+                                                src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            user?.full_name?.charAt(0)
+                                        )}
+                                    </div>
+                                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-3xl">
+                                        <div className="text-center">
+                                            <FiPlus size={24} className="mx-auto mb-1" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Change</span>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={async (e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const formData = new FormData();
+                                                    formData.append('profileImage', file);
+                                                    const loadingToast = toast.loading('Uploading photo...');
+                                                    try {
+                                                        const result = await updateProfile(formData);
+                                                        toast.dismiss(loadingToast);
+                                                        if (result.success) {
+                                                            toast.success('Profile photo updated!');
+                                                        } else {
+                                                            toast.error(result.message || 'Failed to upload photo');
+                                                        }
+                                                    } catch (err) {
+                                                        toast.dismiss(loadingToast);
+                                                        toast.error('An error occurred during upload');
+                                                        console.error(err);
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </label>
                                 </div>
                                 <div className="text-center md:text-left flex-1">
                                     <h2 className="text-3xl font-black text-gray-900 mb-1">{user?.full_name}</h2>

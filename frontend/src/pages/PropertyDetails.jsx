@@ -47,7 +47,10 @@ const PropertyDetails = () => {
                 start_date: bookingData.move_in_date,
                 notes: bookingData.message
             });
-            toast.success('Booking request sent successfully!');
+            toast.success(
+                'Booking request sent successfully! The owner will review your request and send you a rental agreement if approved.',
+                { duration: 6000 }
+            );
             setIsBookingModalOpen(false);
             setTimeout(() => navigate('/tenant/dashboard'), 2000);
         } catch (err) {

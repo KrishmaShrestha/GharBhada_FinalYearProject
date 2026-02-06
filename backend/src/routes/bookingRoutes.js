@@ -12,42 +12,59 @@ router.get('/', authenticate, async (req, res) => {
         let query;
         if (req.user.role === 'tenant') {
             query = `
-        SELECT b.*, p.title as property_title, p.address, p.city,
+        SELECT b.*, p.title as property_title, p.address, p.city, p.images as property_images,
         u.full_name as owner_name, u.phone as owner_phone
         FROM bookings b
         JOIN properties p ON b.property_id = p.property_id
-        JOIN users u ON b.owner_id = u.user_id
+        LEFT JOIN users u ON b.owner_id = u.user_id
         WHERE b.tenant_id = ?
         ORDER BY b.created_at DESC
       `;
         } else if (req.user.role === 'owner') {
             query = `
-        SELECT b.*, p.title as property_title, p.address, p.city,
+        SELECT b.*, p.title as property_title, p.address, p.city, p.images as property_images,
         u.full_name as tenant_name, u.phone as tenant_phone
         FROM bookings b
         JOIN properties p ON b.property_id = p.property_id
-        JOIN users u ON b.tenant_id = u.user_id
+        LEFT JOIN users u ON b.tenant_id = u.user_id
         WHERE b.owner_id = ?
         ORDER BY b.created_at DESC
       `;
         } else {
             query = `
-        SELECT b.*, p.title as property_title, p.address, p.city,
+        SELECT b.*, p.title as property_title, p.address, p.city, p.images as property_images,
         t.full_name as tenant_name, o.full_name as owner_name
         FROM bookings b
         JOIN properties p ON b.property_id = p.property_id
-        JOIN users t ON b.tenant_id = t.user_id
-        JOIN users o ON b.owner_id = o.user_id
+        LEFT JOIN users t ON b.tenant_id = t.user_id
+        LEFT JOIN users o ON b.owner_id = o.user_id
         ORDER BY b.created_at DESC
       `;
         }
 
         const [bookings] = await pool.query(query, [req.user.user_id]);
 
+        // Process images
+        const processedBookings = bookings.map(booking => {
+            let images = [];
+            try {
+                images = typeof booking.property_images === 'string'
+                    ? JSON.parse(booking.property_images)
+                    : booking.property_images;
+            } catch (e) {
+                images = [];
+            }
+
+            return {
+                ...booking,
+                property_image: images && images.length > 0 ? images[0] : null
+            };
+        });
+
         res.json({
             success: true,
-            count: bookings.length,
-            bookings
+            count: processedBookings.length,
+            bookings: processedBookings
         });
     } catch (error) {
         console.error('Get bookings error:', error);
@@ -190,10 +207,16 @@ router.put('/:id/approve-duration', authenticate, authorize('owner'), async (req
 // @access  Private/Owner
 router.put('/:id/status', authenticate, authorize('owner', 'admin'), async (req, res) => {
     try {
-        const { status, reason } = req.body;
+        const { status, reason, electricity_rate, water_bill, garbage_bill, rules_and_regulations } = req.body;
 
+        // Get full booking details
         const [bookings] = await pool.query(
-            'SELECT owner_id, property_id FROM bookings WHERE booking_id = ?',
+            `SELECT b.*, p.title as property_title, p.price_per_month, p.security_deposit,
+             t.full_name as tenant_name, t.phone as tenant_phone
+             FROM bookings b
+             JOIN properties p ON b.property_id = p.property_id
+             JOIN users t ON b.tenant_id = t.user_id
+             WHERE b.booking_id = ?`,
             [req.params.id]
         );
 
@@ -201,18 +224,71 @@ router.put('/:id/status', authenticate, authorize('owner', 'admin'), async (req,
             return res.status(404).json({ success: false, message: 'Booking not found' });
         }
 
-        if (bookings[0].owner_id !== req.user.user_id && req.user.role !== 'admin') {
+        const booking = bookings[0];
+
+        if (booking.owner_id !== req.user.user_id && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
+        // Update booking status
         await pool.query(
             'UPDATE bookings SET status = ?, approved_date = ?, rejection_reason = ? WHERE booking_id = ?',
             [status, status === 'accepted' ? new Date() : null, reason || null, req.params.id]
         );
 
+        // If accepted, automatically create rental agreement
+        if (status === 'accepted') {
+            // Create rental agreement with default or provided values
+            const [agreementResult] = await pool.query(
+                `INSERT INTO rental_agreements (
+                    booking_id, property_id, tenant_id, owner_id, 
+                    base_rent, deposit_amount, electricity_rate, water_bill, garbage_bill,
+                    rules_and_regulations, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agreement_pending')`,
+                [
+                    req.params.id,
+                    booking.property_id,
+                    booking.tenant_id,
+                    booking.owner_id,
+                    booking.monthly_rent || booking.price_per_month,
+                    booking.security_deposit || 5000,
+                    electricity_rate || 12,
+                    water_bill || 500,
+                    garbage_bill || 200,
+                    rules_and_regulations || 'Follow house rules, maintain cleanliness, no illegal activities.'
+                ]
+            );
+
+            // Update booking status to agreement_pending
+            await pool.query(
+                'UPDATE bookings SET status = "agreement_pending" WHERE booking_id = ?',
+                [req.params.id]
+            );
+
+            // Notify tenant about approval and agreement
+            await createNotification(
+                booking.tenant_id,
+                'Booking Approved! 🎉',
+                `Great news! ${req.user.full_name} has approved your booking request for "${booking.property_title}". Please review and sign the rental agreement to proceed.`,
+                'agreement',
+                agreementResult.insertId
+            );
+        } else if (status === 'rejected') {
+            // Notify tenant about rejection
+            await createNotification(
+                booking.tenant_id,
+                'Booking Request Declined',
+                `Unfortunately, your booking request for "${booking.property_title}" has been declined. ${reason ? 'Reason: ' + reason : 'Please try other properties.'}`,
+                'booking',
+                req.params.id
+            );
+        }
+
         res.json({
             success: true,
-            message: `Booking ${status} successfully`
+            message: status === 'accepted'
+                ? 'Booking approved and agreement sent to tenant!'
+                : `Booking ${status} successfully`
         });
     } catch (error) {
         console.error('Update booking status error:', error);

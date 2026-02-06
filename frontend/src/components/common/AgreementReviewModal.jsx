@@ -92,8 +92,8 @@ const AgreementReviewModal = ({ isOpen, onClose, agreement, onApprove, onDecline
                                 <p className="font-black uppercase tracking-wider mb-1">Owner Payment Details</p>
                                 <p>Please transfer the deposit of <span className="font-bold">Rs. {agreement.deposit_amount?.toLocaleString()}</span> to:</p>
                                 <div className="mt-2 p-3 bg-white/60 rounded-xl border border-blue-200">
-                                    <p><span className="text-gray-500">Bank:</span> <span className="font-bold">{agreement.bank_name || 'Global IME Bank'}</span></p>
-                                    <p><span className="text-gray-500">A/C Number:</span> <span className="font-bold tracking-widest">{agreement.bank_account_number || '001002003004'}</span></p>
+                                    <p><span className="text-gray-500">Bank:</span> <span className="font-bold">{agreement.bank_name || 'Not provided'}</span></p>
+                                    <p><span className="text-gray-500">A/C Number:</span> <span className="font-bold tracking-widest">{agreement.bank_account_number || 'Not provided'}</span></p>
                                 </div>
                                 <p className="mt-3 italic">By clicking "Approve", you legally agree to the terms mentioned above and commit to the transfer.</p>
                             </div>

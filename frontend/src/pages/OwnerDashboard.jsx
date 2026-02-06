@@ -16,6 +16,7 @@ import AddPropertyModal from '../components/admin/AddPropertyModal';
 import RecordPaymentModal from '../components/admin/RecordPaymentModal';
 import CreateAgreementModal from '../components/admin/CreateAgreementModal';
 import TenantDetailModal from '../components/admin/TenantDetailModal';
+import BookingApprovalModal from '../components/common/BookingApprovalModal';
 
 // Tabs
 import OverviewTab from './OwnerDashboard/OverviewTab';
@@ -46,6 +47,7 @@ const OwnerDashboard = () => {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
     const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
+    const [isBookingApprovalModalOpen, setIsBookingApprovalModalOpen] = useState(false);
 
     // Selections
     const [selectedBooking, setSelectedBooking] = useState(null);
@@ -143,10 +145,11 @@ const OwnerDashboard = () => {
         }
     };
 
-    const handleAcceptBooking = async (requestId) => {
+    const handleAcceptBooking = async (requestId, agreementTerms) => {
         try {
-            await ownerService.acceptBookingRequest(requestId);
-            toast.success('Request accepted!');
+            await ownerService.acceptBookingRequest(requestId, agreementTerms);
+            toast.success('Booking approved! Agreement sent to tenant 🎉');
+            setIsBookingApprovalModalOpen(false);
             fetchData();
         } catch (err) {
             toast.error(err.message || 'Failed to accept booking');
@@ -352,7 +355,11 @@ const OwnerDashboard = () => {
                 {activeTab === 'bookings' && (
                     <BookingsTab
                         bookingRequests={bookingRequests}
-                        onAccept={handleAcceptBooking}
+                        onAccept={(booking) => {
+                            const bookingData = bookingRequests.find(b => (b.booking_id || b.request_id) === booking);
+                            setSelectedBooking(bookingData);
+                            setIsBookingApprovalModalOpen(true);
+                        }}
                         onReject={handleRejectBooking}
                         onApproveDuration={handleApproveDuration}
                         onCreateAgreement={(booking) => { setSelectedBooking(booking); setIsAgreementModalOpen(true); }}
@@ -405,6 +412,13 @@ const OwnerDashboard = () => {
                 isOpen={isTenantModalOpen}
                 onClose={() => setIsTenantModalOpen(false)}
                 tenant={selectedBooking}
+            />
+            <BookingApprovalModal
+                isOpen={isBookingApprovalModalOpen}
+                onClose={() => setIsBookingApprovalModalOpen(false)}
+                booking={selectedBooking}
+                onApprove={handleAcceptBooking}
+                onReject={handleRejectBooking}
             />
         </div>
     );

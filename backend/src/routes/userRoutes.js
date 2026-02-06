@@ -34,7 +34,13 @@ router.put('/profile', authenticate, upload.single('profileImage'), async (req, 
 
         if (full_name) updates.full_name = full_name;
         if (phone) updates.phone = phone;
-        if (req.file) updates.profile_image = req.file.path;
+        if (req.file) {
+            // Path: public/uploads/profiles/filename.jpg -> /uploads/profiles/filename.jpg
+            const relativePath = req.file.path.replace(/\\/g, '/');
+            updates.profile_image = relativePath.includes('uploads')
+                ? '/' + relativePath.substring(relativePath.indexOf('uploads'))
+                : '/' + relativePath;
+        }
 
         if (Object.keys(updates).length === 0) {
             return res.status(400).json({ success: false, message: 'No updates provided' });
