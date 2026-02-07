@@ -6,7 +6,7 @@ import * as maintenanceService from '../services/maintenanceService';
 import toast, { Toaster } from 'react-hot-toast';
 import {
     FiHome, FiUsers, FiDollarSign, FiCalendar, FiTrendingUp,
-    FiFileText, FiBell, FiSettings, FiTool
+    FiFileText, FiBell, FiSettings, FiTool, FiPlus, FiLogOut, FiInfo
 } from 'react-icons/fi';
 import { format, differenceInYears } from 'date-fns';
 
@@ -17,6 +17,7 @@ import RecordPaymentModal from '../components/admin/RecordPaymentModal';
 import CreateAgreementModal from '../components/admin/CreateAgreementModal';
 import TenantDetailModal from '../components/admin/TenantDetailModal';
 import BookingApprovalModal from '../components/common/BookingApprovalModal';
+import EditProfileModal from '../components/common/EditProfileModal';
 
 // Tabs
 import OverviewTab from './OwnerDashboard/OverviewTab';
@@ -29,7 +30,7 @@ import MaintenanceTab from './OwnerDashboard/MaintenanceTab';
 const IMG_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
 
 const OwnerDashboard = () => {
-    const { user } = useAuth();
+    const { user, logout, updateProfile } = useAuth();
     const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState('overview');
@@ -48,6 +49,7 @@ const OwnerDashboard = () => {
     const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
     const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
     const [isBookingApprovalModalOpen, setIsBookingApprovalModalOpen] = useState(false);
+    const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
 
     // Selections
     const [selectedBooking, setSelectedBooking] = useState(null);
@@ -235,6 +237,30 @@ const OwnerDashboard = () => {
         }
     };
 
+    const handleUpdateProfile = async (data) => {
+        const loadingToast = toast.loading('Updating profile...');
+        try {
+            // Convert plain object to FormData for multipart/form-data consistency
+            const formData = new FormData();
+            Object.keys(data).forEach(key => {
+                formData.append(key, data[key]);
+            });
+
+            const result = await updateProfile(formData);
+            toast.dismiss(loadingToast);
+            if (result.success) {
+                toast.success('Profile updated successfully!');
+                setIsEditProfileModalOpen(false);
+            } else {
+                toast.error(result.message || 'Failed to update profile');
+            }
+        } catch (err) {
+            toast.dismiss(loadingToast);
+            toast.error('An error occurred during update');
+            console.error(err);
+        }
+    };
+
     const tabs = [
         { id: 'overview', label: 'Overview', icon: FiTrendingUp },
         { id: 'properties', label: 'My Properties', icon: FiHome },
@@ -242,6 +268,7 @@ const OwnerDashboard = () => {
         { id: 'payments', label: 'Payments', icon: FiDollarSign },
         { id: 'agreements', label: 'Agreements', icon: FiFileText },
         { id: 'maintenance', label: 'Maintenance', icon: FiTool },
+        { id: 'profile', label: 'My Profile', icon: FiUsers },
     ];
 
     const earningsData = [
@@ -294,8 +321,19 @@ const OwnerDashboard = () => {
                                 <p className="text-sm font-semibold text-gray-900">{user?.full_name}</p>
                                 <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold border-2 border-primary-500">
-                                {user?.full_name?.charAt(0)}
+                            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold border-2 border-primary-500 overflow-hidden">
+                                {user?.profile_image ? (
+                                    <img
+                                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.src = `https://ui-avatars.com/api/?name=${user?.full_name}&background=random`;
+                                        }}
+                                    />
+                                ) : (
+                                    user?.full_name?.charAt(0)
+                                )}
                             </div>
                         </div>
                     </div>
@@ -387,6 +425,112 @@ const OwnerDashboard = () => {
                         onUpdateStatus={handleUpdateMaintenance}
                     />
                 )}
+                {activeTab === 'profile' && (
+                    <div className="max-w-4xl mx-auto space-y-8">
+                        <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+                            <div className="flex flex-col md:flex-row items-center gap-8">
+                                <div className="relative group">
+                                    <div className="w-32 h-32 rounded-3xl bg-primary-600 border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-black overflow-hidden">
+                                        {user?.profile_image ? (
+                                            <img
+                                                src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            user?.full_name?.charAt(0)
+                                        )}
+                                    </div>
+                                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-3xl">
+                                        <div className="text-center">
+                                            <FiPlus size={24} className="mx-auto mb-1" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Change</span>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={async (e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const formData = new FormData();
+                                                    formData.append('profileImage', file);
+                                                    const loadingToast = toast.loading('Uploading photo...');
+                                                    try {
+                                                        const result = await updateProfile(formData);
+                                                        toast.dismiss(loadingToast);
+                                                        if (result.success) {
+                                                            toast.success('Profile photo updated!');
+                                                        } else {
+                                                            toast.error(result.message || 'Failed to upload photo');
+                                                        }
+                                                    } catch (err) {
+                                                        toast.dismiss(loadingToast);
+                                                        toast.error('An error occurred during upload');
+                                                        console.error(err);
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                                <div className="text-center md:text-left flex-1">
+                                    <h2 className="text-3xl font-black text-gray-900 mb-1">{user?.full_name}</h2>
+                                    <p className="text-gray-500 font-medium mb-4">{user?.email}</p>
+                                    <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                                        <Badge variant={user?.role === 'owner' ? 'success' : 'primary'}>{user?.role?.toUpperCase()}</Badge>
+                                        <Badge variant={user?.is_verified ? 'success' : 'warning'}>
+                                            {user?.is_verified ? 'VERIFIED' : 'PENDING VERIFICATION'}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={logout}
+                                    className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all group"
+                                    title="Logout"
+                                >
+                                    <FiLogOut size={24} className="group-hover:rotate-180 transition-transform duration-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+                                <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                    <FiInfo className="text-primary-500" /> Account Information
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                        <span className="text-gray-500 text-sm">Phone</span>
+                                        <span className="font-bold text-gray-900">{user?.phone || 'Not provided'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                        <span className="text-gray-500 text-sm">Citizen ID</span>
+                                        <span className="font-bold text-gray-900">{user?.citizen_number || 'Under review'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                                        <span className="text-gray-500 text-sm">Joined On</span>
+                                        <span className="font-bold text-gray-900">{user?.created_at ? formatDateSafe(user.created_at, 'MMMM yyyy') : 'Recently'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm flex flex-col justify-center items-center text-center">
+                                <div className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center mb-4">
+                                    <FiSettings size={24} />
+                                </div>
+                                <h3 className="font-bold text-gray-900 mb-2">Account Settings</h3>
+                                <p className="text-gray-500 text-sm mb-6">Update your address, change password or verify documents.</p>
+                                <button
+                                    onClick={() => setIsEditProfileModalOpen(true)}
+                                    className="w-full py-3 rounded-2xl bg-gray-900 text-white font-bold hover:bg-black transition-all"
+                                >
+                                    Edit Profile
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
 
             {/* Modals */}
@@ -419,6 +563,12 @@ const OwnerDashboard = () => {
                 booking={selectedBooking}
                 onApprove={handleAcceptBooking}
                 onReject={handleRejectBooking}
+            />
+            <EditProfileModal
+                isOpen={isEditProfileModalOpen}
+                onClose={() => setIsEditProfileModalOpen(false)}
+                user={user}
+                onUpdate={handleUpdateProfile}
             />
         </div>
     );
