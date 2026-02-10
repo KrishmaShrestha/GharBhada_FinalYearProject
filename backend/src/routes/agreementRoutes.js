@@ -17,6 +17,7 @@ router.get('/', authenticate, async (req, res) => {
                 a.deposit_amount as security_deposit,
                 p.title as property_title, p.address as property_address, p.city,
                 o.full_name as owner_name, o.phone as owner_phone, o.bank_name, o.bank_account_number,
+                (TIMESTAMPDIFF(MONTH, o.created_at, NOW()) >= 1) as is_trusted_owner,
                 b.rental_years, b.rental_months, b.start_date as booking_start_date
                 FROM rental_agreements a
                 JOIN properties p ON a.property_id = p.property_id

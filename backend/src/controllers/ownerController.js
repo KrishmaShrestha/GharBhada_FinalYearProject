@@ -190,7 +190,8 @@ exports.getPaymentHistory = async (req, res) => {
         const ownerId = req.user.user_id;
         // FIXED QUERY VERSION 2
         const [payments] = await pool.query(`
-            SELECT p.*, u.full_name as tenant_name, pr.title as property_title
+            SELECT p.*, u.full_name as tenant_name, pr.title as property_title,
+            p.electricity_units, p.water_amount, p.garbage_amount, p.deposit_adjustment, p.base_rent
             FROM payments p
             JOIN users u ON p.tenant_id = u.user_id
             JOIN bookings b ON p.booking_id = b.booking_id
@@ -215,7 +216,10 @@ exports.recordPayment = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        const { booking_id, amount, payment_type, payment_method, notes, electricity_units } = req.body;
+        const {
+            booking_id, amount, payment_type, payment_method, notes,
+            electricity_units, water_amount, garbage_amount, deposit_adjustment, base_rent
+        } = req.body;
         const ownerId = req.user.user_id;
 
         // Verify booking ownership
@@ -236,9 +240,17 @@ exports.recordPayment = async (req, res) => {
 
         // Record the payment
         const [result] = await connection.query(
-            `INSERT INTO payments (booking_id, tenant_id, owner_id, amount, payment_type, payment_method, payment_status, notes, payment_date)
-             VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, NOW())`,
-            [booking_id, tenantId, ownerId, amount, dbPaymentType || 'rent', payment_method || 'bank_transfer', notes]
+            `INSERT INTO payments (
+                booking_id, tenant_id, owner_id, amount, payment_type, 
+                payment_method, payment_status, notes, payment_date,
+                electricity_units, water_amount, garbage_amount, deposit_adjustment, base_rent
+            ) VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, NOW(), ?, ?, ?, ?, ?)`,
+            [
+                booking_id, bookings[0].tenant_id, ownerId, amount, dbPaymentType || 'rent',
+                payment_method || 'bank_transfer', notes,
+                electricity_units || 0, water_amount || 0, garbage_amount || 0,
+                deposit_adjustment || 0, base_rent || amount
+            ]
         );
 
         // If it's a deposit payment, activate the booking and agreement

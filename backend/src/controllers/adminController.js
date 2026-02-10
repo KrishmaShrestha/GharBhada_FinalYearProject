@@ -43,6 +43,16 @@ exports.getAllUsers = async (req, res) => {
         query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
         params.push(parseInt(limit), parseInt(offset));
 
+        // Auto-update trust level for owners registered for more than 30 days
+        await pool.query(`
+            UPDATE users 
+            SET trust_level = 'trusted', trust_level_updated_at = NOW() 
+            WHERE role = 'owner' 
+            AND is_verified = TRUE 
+            AND trust_level = 'basic' 
+            AND created_at <= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+        `);
+
         const [users] = await pool.query(query, params);
 
         // Get total count
@@ -418,7 +428,7 @@ exports.getDashboardStats = async (req, res) => {
                 SUM(CASE WHEN role = 'owner' THEN 1 ELSE 0 END) as total_owners,
                 SUM(CASE WHEN role = 'tenant' THEN 1 ELSE 0 END) as total_tenants,
                 SUM(CASE WHEN approval_status = 'pending' THEN 1 ELSE 0 END) as pending_approvals,
-                SUM(CASE WHEN trust_level = 'trusted' AND role = 'owner' THEN 1 ELSE 0 END) as trusted_owners
+                SUM(CASE WHEN (trust_level = 'trusted' OR (role = 'owner' AND created_at <= DATE_SUB(NOW(), INTERVAL 1 MONTH) AND is_verified = TRUE)) AND role = 'owner' THEN 1 ELSE 0 END) as trusted_owners
             FROM users WHERE role != 'admin'
         `);
 
