@@ -51,82 +51,113 @@ const RecordPaymentModal = ({ isOpen, onClose, agreement, onRecord }) => {
             }
         >
             <div className="space-y-6">
-                <div className="p-4 bg-primary-50 rounded-2xl flex items-center justify-between">
+                <div className="p-5 bg-gradient-to-br from-primary-50 to-white rounded-[2rem] border border-primary-100 shadow-sm flex items-center justify-between">
                     <div>
-                        <p className="text-xs text-primary-600 font-bold uppercase">Basic Rent</p>
-                        <p className="text-lg font-bold text-gray-900">Rs. {agreement?.monthly_rent?.toLocaleString()}</p>
+                        <p className="text-[10px] text-primary-600 font-black uppercase tracking-widest mb-1">Monthly Basic Rent</p>
+                        <p className="text-2xl font-black text-gray-900">Rs. {agreement?.monthly_rent?.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs text-primary-600 font-bold uppercase">Tenant</p>
-                        <p className="text-sm font-bold text-gray-900">{agreement?.tenant_name}</p>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Tenant</p>
+                        <p className="text-sm font-black text-gray-900">{agreement?.tenant_name}</p>
                     </div>
                 </div>
 
-                <form className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                {agreement?.start_date && new Date(agreement.start_date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) && (
+                    <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 flex gap-3 animate-pulse">
+                        <FiFileText className="text-yellow-600 mt-1 shrink-0" />
+                        <div>
+                            <p className="text-[11px] font-bold text-yellow-800">First Month Special Logic</p>
+                            <p className="text-[10px] text-yellow-700">Suggestion: If the tenant already paid Rs. {agreement.deposit_amount?.toLocaleString()} as deposit, you can adjust it here if needed.</p>
+                        </div>
+                    </div>
+                )}
+
+                <form className="space-y-5">
+                    <div className="grid grid-cols-2 gap-5">
+                        <div className="col-span-2 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <label className="block text-sm font-black text-gray-700 mb-2 flex items-center gap-2">
                                 <FiZap className="text-yellow-500" /> Electricity Units Consumed
                             </label>
                             <input
                                 type="number"
                                 value={formData.electricity_units}
                                 onChange={(e) => setFormData({ ...formData, electricity_units: e.target.value })}
-                                className="w-full border-gray-200 rounded-xl"
+                                className="w-full bg-white border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 transition-all font-bold"
                                 placeholder="Enter units (e.g. 150)"
                             />
-                            <p className="text-[10px] text-gray-400 mt-1">Rate: Rs. {agreement?.electricity_rate}/unit = Rs. {(formData.electricity_units * agreement?.electricity_rate || 0).toLocaleString()}</p>
+                            <div className="flex justify-between items-center mt-2 px-1">
+                                <span className="text-[10px] text-gray-400 font-medium">Rate: Rs. {agreement?.electricity_rate}/unit</span>
+                                <span className="text-[10px] font-bold text-primary-600">Cost: Rs. {(formData.electricity_units * agreement?.electricity_rate || 0).toLocaleString()}</span>
+                            </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-                                <FiDroplet className="text-blue-500" /> Water Charge
+                            <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <FiDroplet className="text-blue-500" /> Water
                             </label>
                             <input
                                 type="number"
                                 value={formData.water_amount}
                                 onChange={(e) => setFormData({ ...formData, water_amount: e.target.value })}
-                                className="w-full border-gray-200 rounded-xl"
+                                className="w-full border-gray-200 rounded-xl px-4 py-2 font-bold focus:ring-2 focus:ring-primary-500"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-                                <FiTrash2 className="text-green-500" /> Garbage Charge
+                            <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <FiTrash2 className="text-green-500" /> Garbage
                             </label>
                             <input
                                 type="number"
                                 value={formData.garbage_amount}
                                 onChange={(e) => setFormData({ ...formData, garbage_amount: e.target.value })}
-                                className="w-full border-gray-200 rounded-xl"
+                                className="w-full border-gray-200 rounded-xl px-4 py-2 font-bold focus:ring-2 focus:ring-primary-500"
                             />
                         </div>
 
                         <div className="col-span-2">
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Deposit Adjustment (Deduction)</label>
-                            <input
-                                type="number"
-                                value={formData.deposit_adjustment}
-                                onChange={(e) => setFormData({ ...formData, deposit_adjustment: e.target.value })}
-                                className="w-full border-gray-200 rounded-xl"
-                            />
+                            <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">Deposit Adjustment (Deduction)</label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={formData.deposit_adjustment}
+                                    onChange={(e) => setFormData({ ...formData, deposit_adjustment: e.target.value })}
+                                    className="w-full border-gray-200 rounded-xl px-4 py-3 font-bold text-red-600 focus:ring-2 focus:ring-red-500 bg-red-50/30"
+                                    placeholder="0"
+                                />
+                                {formData.deposit_adjustment > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, deposit_adjustment: 0 })}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                    >
+                                        <FiX />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-dashed">
-                        <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm text-gray-500">Rent + Utilities</span>
-                            <span className="font-bold text-gray-700">Rs. {(calculateTotal() + Number(formData.deposit_adjustment)).toLocaleString()}</span>
-                        </div>
-                        {formData.deposit_adjustment > 0 && (
-                            <div className="flex justify-between items-center mb-1 text-red-500">
-                                <span className="text-sm">Deposit Deduction</span>
-                                <span className="font-bold">- Rs. {Number(formData.deposit_adjustment).toLocaleString()}</span>
+                    <div className="pt-6 border-t border-dashed border-gray-200">
+                        <div className="space-y-2 mb-4">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-500 font-medium">Rent + Utilities</span>
+                                <span className="font-bold text-gray-900">Rs. {(calculateTotal() + Number(formData.deposit_adjustment)).toLocaleString()}</span>
                             </div>
-                        )}
-                        <div className="flex justify-between items-center mt-2 p-3 bg-gray-900 rounded-xl text-white">
-                            <span className="font-bold">Total Payable</span>
-                            <span className="text-xl font-bold">Rs. {calculateTotal().toLocaleString()}</span>
+                            {formData.deposit_adjustment > 0 && (
+                                <div className="flex justify-between items-center text-sm text-red-600 bg-red-50 p-2 rounded-lg">
+                                    <span className="font-medium">Deposit Deduction</span>
+                                    <span className="font-black">- Rs. {Number(formData.deposit_adjustment).toLocaleString()}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-gray-900 rounded-[1.5rem] p-4 text-white shadow-xl shadow-gray-200 flex justify-between items-center ring-4 ring-white">
+                            <div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Total Payable</p>
+                                <p className="text-2xl font-black">Rs. {calculateTotal().toLocaleString()}</p>
+                            </div>
+                            <FiDollarSign className="text-primary-400 text-3xl opacity-50" />
                         </div>
                     </div>
                 </form>

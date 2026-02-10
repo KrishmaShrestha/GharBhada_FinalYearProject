@@ -477,43 +477,48 @@ const TenantDashboard = () => {
                         </div>
 
                         {payments.length === 0 ? (
-                            <div className="bg-white rounded-3xl border border-gray-100 p-20 text-center">
-                                <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <FiDollarSign size={24} />
+                            <div className="glass rounded-[2.5rem] border border-white/20 p-24 text-center shadow-xl">
+                                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200 animate-float">
+                                    <FiDollarSign size={32} />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">No Payments Yet</h3>
-                                <p className="text-gray-500 text-sm">Once you complete a booking, your payment history will appear here.</p>
+                                <h3 className="text-xl font-black text-gray-900 mb-2">Financial History Empty</h3>
+                                <p className="text-gray-400 font-medium">Your rental payments and security deposits will be archived here.</p>
                             </div>
                         ) : (
-                            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="glass rounded-[2.5rem] border border-white/20 shadow-2xl overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
-                                        <thead className="bg-gray-50 border-b border-gray-100">
+                                        <thead className="bg-gray-900 text-white border-b border-gray-800">
                                             <tr>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Property</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Type</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Amount</th>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Property Asset</th>
+                                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Transaction Category</th>
+                                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Settlement Date</th>
+                                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Disbursement</th>
+                                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Verification Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-50">
+                                        <tbody className="divide-y divide-gray-100/50 bg-white/40">
                                             {payments.map((p, idx) => (
-                                                <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <p className="font-bold text-gray-900 text-sm">{p.property_title}</p>
+                                                <tr key={idx} className="hover:bg-primary-50/30 transition-all duration-300 group">
+                                                    <td className="px-8 py-6">
+                                                        <p className="font-black text-gray-900 text-sm group-hover:text-primary-700 transition-colors uppercase tracking-tight">{p.property_title}</p>
                                                     </td>
-                                                    <td className="px-6 py-4">
-                                                        <Badge variant={p.type === 'deposit' ? 'primary' : 'success'}>{p.type?.toUpperCase()}</Badge>
+                                                    <td className="px-8 py-6">
+                                                        <Badge variant={p.type === 'deposit' ? 'primary' : 'success'} className="font-black text-[9px] py-1 px-3 rounded-lg border-none shadow-sm uppercase tracking-wider">
+                                                            {p.type?.toUpperCase() || p.payment_type?.toUpperCase() || 'RENT'}
+                                                        </Badge>
                                                     </td>
-                                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                                    <td className="px-8 py-6 text-xs text-gray-500 font-black tracking-tighter uppercase">
                                                         {format(new Date(p.created_at), 'MMM d, yyyy')}
                                                     </td>
-                                                    <td className="px-6 py-4 font-black text-primary-600">
-                                                        Rs. {p.amount?.toLocaleString()}
+                                                    <td className="px-8 py-6">
+                                                        <p className="text-base font-black text-gray-900 group-hover:text-primary-600 transition-colors">Rs. {(p.amount || p.total_amount)?.toLocaleString()}</p>
                                                     </td>
-                                                    <td className="px-6 py-4">
-                                                        <Badge variant={p.status === 'paid' ? 'success' : 'warning'}>{p.status?.toUpperCase()}</Badge>
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-2 h-2 rounded-full ${p.status === 'paid' || p.payment_status === 'completed' ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
+                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(p.status || p.payment_status)?.toUpperCase()}</span>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -521,7 +526,8 @@ const TenantDashboard = () => {
                                     </table>
                                 </div>
                             </div>
-                        )}
+                        )
+                        }
                     </div>
                 )}
 
@@ -547,7 +553,15 @@ const TenantDashboard = () => {
                                                 </div>
                                                 <Badge variant={agm.status === 'active' ? 'success' : 'warning'}>{agm.status?.toUpperCase()}</Badge>
                                             </div>
-                                            <h3 className="text-xl font-black text-gray-900 mb-2">{agm.property_title}</h3>
+                                            <h3 className="text-xl font-black text-gray-900 mb-1">{agm.property_title}</h3>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Owner: {agm.owner_name}</span>
+                                                {agm.is_trusted_owner ? (
+                                                    <span className="bg-blue-600 text-white text-[8px] px-2 py-0.5 rounded-full flex items-center gap-1 font-black shadow-sm">
+                                                        <FiShield className="w-2 h-2" /> TRUSTED OWNER
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             <div className="space-y-2 mb-8">
                                                 <p className="text-sm text-gray-500 flex justify-between">Monthly Rent <span className="font-bold text-gray-900 underline underline-offset-4 decoration-primary-200">Rs. {agm.monthly_rent?.toLocaleString()}</span></p>
                                                 <p className="text-sm text-gray-500 flex justify-between">Duration <span className="font-bold text-gray-900">{agm.lease_duration_years} Years</span></p>

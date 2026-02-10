@@ -213,7 +213,7 @@ const AdminDashboard = () => {
             <Toaster position="top-right" />
 
             {/* Header */}
-            <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+            <div className="glass sticky top-0 z-20 shadow-sm border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div>
@@ -234,7 +234,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Tabs */}
-            <div className="bg-white border-b sticky top-[73px] z-10">
+            <div className="glass sticky top-[73px] z-20 border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-6">
                     <nav className="flex space-x-8" aria-label="Tabs">
                         {tabs.map((tab) => {
@@ -640,7 +640,14 @@ const AdminDashboard = () => {
                                         {filteredUsers.map((u) => (
                                             <tr key={u.user_id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="font-medium text-gray-900">{u.full_name}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="font-bold text-gray-900">{u.full_name}</div>
+                                                        {u.role === 'owner' && u.trust_level === 'trusted' && (
+                                                            <span className="bg-blue-600 text-white text-[8px] px-2 py-0.5 rounded-full font-black shadow-sm">
+                                                                TRUSTED
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">

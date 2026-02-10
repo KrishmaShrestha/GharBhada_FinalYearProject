@@ -214,7 +214,11 @@ const OwnerDashboard = () => {
                 payment_type: isInitialPayment ? 'deposit' : 'monthly_rent',
                 payment_method: 'bank_transfer',
                 remarks: modalData.notes,
-                electricity_units: modalData.electricity_units
+                electricity_units: modalData.electricity_units,
+                water_amount: modalData.water_amount,
+                garbage_amount: modalData.garbage_amount,
+                deposit_adjustment: modalData.deposit_adjustment,
+                base_rent: modalData.base_rent
             };
 
             await ownerService.recordPayment(payload);
@@ -482,6 +486,11 @@ const OwnerDashboard = () => {
                                         <Badge variant={user?.is_verified ? 'success' : 'warning'}>
                                             {user?.is_verified ? 'VERIFIED' : 'PENDING VERIFICATION'}
                                         </Badge>
+                                        {user?.role === 'owner' && user?.trust_level === 'trusted' && (
+                                            <Badge variant="primary" className="bg-blue-600 text-white border-none flex items-center gap-1">
+                                                <FiShield className="w-3 h-3" /> TRUSTED OWNER
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
                                 <button
