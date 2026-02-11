@@ -7,6 +7,8 @@ const { pool } = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const passport = require('../config/passport');
 const upload = require('../middleware/upload');
+const crypto = require('crypto');
+const sendEmail = require('../utils/emailHelper');
 
 // Validation middleware
 const registerValidation = [
@@ -366,6 +368,147 @@ router.post('/complete-profile', authenticate, upload.single('id_proof'), async 
             success: false,
             message: 'Failed to complete profile'
         });
+    }
+});
+
+// @route   POST /api/auth/forgot-password
+// @desc    Send password reset email
+// @access  Public
+router.post('/forgot-password', [
+    body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const { email } = req.body;
+
+        // 1. Find user by email
+        const [users] = await pool.query('SELECT user_id, full_name FROM users WHERE email = ?', [email]);
+        if (users.length === 0) {
+            // Professional security: Don't reveal if user exists
+            return res.json({
+                success: true,
+                message: 'If an account with that email exists, a password reset link has been sent.'
+            });
+        }
+
+        const user = users[0];
+
+        // 2. Generate random reset token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        // Expiry: 1 hour from now
+        const expiry = new Date(Date.now() + 60 * 60 * 1000);
+
+        // 3. Save to database
+        await pool.query(
+            'UPDATE users SET reset_password_token = ?, reset_password_expiry = ? WHERE user_id = ?',
+            [tokenHash, expiry, user.user_id]
+        );
+
+        // 4. Send email
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+        const message = `You are receiving this email because you (or someone else) have requested the reset of a password. 
+        Please click on the following link, or paste this into your browser to complete the process: 
+        \n\n${resetUrl}\n\n 
+        If you did not request this, please ignore this email and your password will remain unchanged.`;
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+                <h2 style="color: #3b82f6; text-align: center;">GharBhada Password Reset</h2>
+                <p>Hello ${user.full_name},</p>
+                <p>You requested a password reset for your GharBhada account. Click the button below to reset it:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${resetUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+                </div>
+                <p>This link will expire in 1 hour.</p>
+                <p>If you did not request this, please ignore this email.</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #777; text-align: center;">&copy; 2026 GharBhada. All rights reserved.</p>
+            </div>
+        `;
+
+        try {
+            await sendEmail({
+                email: email,
+                subject: 'Password Reset Request - GharBhada',
+                message,
+                html
+            });
+
+            res.json({
+                success: true,
+                message: 'Password reset link sent to your email.'
+            });
+        } catch (err) {
+            console.error('Email error:', err);
+            // Reset token if email fails
+            await pool.query(
+                'UPDATE users SET reset_password_token = NULL, reset_password_expiry = NULL WHERE user_id = ?',
+                [user.user_id]
+            );
+            return res.status(500).json({
+                success: false,
+                message: 'There was an error sending the email. Try again later.'
+            });
+        }
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// @route   POST /api/auth/reset-password/:token
+// @desc    Reset password
+// @access  Public
+router.post('/reset-password/:token', [
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
+        const resetToken = req.params.token;
+        const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        // 1. Find user with valid token
+        const [users] = await pool.query(
+            'SELECT user_id FROM users WHERE reset_password_token = ? AND reset_password_expiry > NOW()',
+            [tokenHash]
+        );
+
+        if (users.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Token is invalid or has expired'
+            });
+        }
+
+        const user = users[0];
+
+        // 2. Hash new password
+        const password_hash = await bcrypt.hash(req.body.password, 10);
+
+        // 3. Update password and clear reset fields
+        await pool.query(
+            'UPDATE users SET password_hash = ?, reset_password_token = NULL, reset_password_expiry = NULL WHERE user_id = ?',
+            [password_hash, user.user_id]
+        );
+
+        res.json({
+            success: true,
+            message: 'Password has been reset successfully. You can now login with your new password.'
+        });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 

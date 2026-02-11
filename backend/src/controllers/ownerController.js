@@ -42,10 +42,10 @@ exports.getDashboardStats = async (req, res) => {
         res.json({
             success: true,
             stats: {
-                total_properties: propStats[0].total_properties,
-                active_rentals: propStats[0].total_properties - propStats[0].available_properties,
-                pending_requests: bookingStats[0].pending_requests,
-                monthly_earnings: paymentStats[0].monthly_earnings
+                total_properties: propStats[0]?.total_properties || 0,
+                active_rentals: (propStats[0]?.total_properties || 0) - (propStats[0]?.available_properties || 0),
+                pending_requests: bookingStats[0]?.pending_requests || 0,
+                monthly_earnings: paymentStats[0]?.monthly_earnings || 0
             }
         });
     } catch (error) {

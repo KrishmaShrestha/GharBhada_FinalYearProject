@@ -13,6 +13,8 @@ import OwnerDashboard from './pages/OwnerDashboard';
 import TenantDashboard from './pages/TenantDashboard';
 import AuthSuccess from './pages/AuthSuccess';
 import CompleteProfile from './pages/CompleteProfile';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Components
 import Navbar from './components/Navbar';
@@ -32,6 +34,8 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/auth-success" element={<AuthSuccess />} />
               <Route path="/complete-profile" element={<CompleteProfile />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/properties/:id" element={<PropertyDetails />} />
 

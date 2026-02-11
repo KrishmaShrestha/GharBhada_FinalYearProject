@@ -111,7 +111,7 @@ const Login = () => {
                             />
                         </div>
 
-                        <div>
+                        <div className="relative">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Password
                             </label>
@@ -123,6 +123,11 @@ const Login = () => {
                                 className="input-field"
                                 required
                             />
+                            <div className="flex justify-end mt-1">
+                                <Link to="/forgot-password" title="Click here to reset your password" style={{ cursor: 'pointer' }} className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                    Forgot Password?
+                                </Link>
+                            </div>
                         </div>
 
                         <button
