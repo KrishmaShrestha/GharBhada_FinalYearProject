@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import Logo from '../components/common/Logo';
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -83,7 +84,10 @@ const Login = () => {
         <div className="min-h-[80vh] flex items-center justify-center bg-gray-50 py-12 px-4">
             <div className="max-w-md w-full">
                 <div className="card">
-                    <h2 className="text-3xl font-bold text-center mb-8">Login to GharBhada</h2>
+                    <div className="flex flex-col items-center justify-center mb-10">
+                        <Logo className="scale-125" showText={true} />
+                    </div>
+                    <h2 className="text-3xl font-black text-center mb-8 text-gray-900 tracking-tight">Login to Your Account</h2>
 
                     {successMessage && (
                         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">

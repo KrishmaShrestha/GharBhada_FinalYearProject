@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import Logo from '../components/common/Logo';
 
 const Register = () => {
     const [step, setStep] = useState(1);
@@ -420,9 +421,12 @@ const Register = () => {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-accent-50 py-12 px-4">
             <div className="max-w-2xl w-full">
                 <div className="card">
+                    <div className="flex flex-col items-center justify-center mb-10">
+                        <Logo className="scale-125" showText={true} />
+                    </div>
                     <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold text-gradient mb-2">Create Your Account</h2>
-                        <p className="text-gray-600">Join GharBhada and find your perfect rental home</p>
+                        <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Create Your Account</h2>
+                        <p className="text-gray-500 font-medium">Join GharBhada and find your perfect rental home</p>
                     </div>
 
                     {renderStepIndicator()}

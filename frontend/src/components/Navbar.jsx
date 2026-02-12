@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './common/NotificationBell';
+import Logo from './common/Logo';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
 
     return (
-        <nav className="bg-white shadow-md">
-            <div className="container mx-auto px-4">
-                <div className="flex justify-between items-center h-16">
-                    <Link to="/" className="text-2xl font-bold text-primary-500">
-                        GharBhada
+        <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+            <div className="container mx-auto px-4 md:px-8">
+                <div className="flex justify-between items-center h-20">
+                    <Link to="/" className="hover:opacity-80 transition-opacity">
+                        <Logo className="h-10" />
                     </Link>
 
                     <div className="hidden md:flex space-x-6">
