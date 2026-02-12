@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ const Login = () => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -116,13 +118,20 @@ const Login = () => {
                                 Password
                             </label>
                             <input
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                className="input-field"
+                                className="input-field pr-10"
                                 required
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 focus:outline-none"
+                            >
+                                {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+                            </button>
                             <div className="flex justify-end mt-1">
                                 <Link to="/forgot-password" title="Click here to reset your password" style={{ cursor: 'pointer' }} className="text-xs text-primary-600 hover:text-primary-700 font-medium">
                                     Forgot Password?

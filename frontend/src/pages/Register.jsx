@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const Register = () => {
     const [step, setStep] = useState(1);
@@ -28,6 +29,8 @@ const Register = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [preview, setPreview] = useState(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const { register } = useAuth();
     const navigate = useNavigate();
@@ -214,28 +217,42 @@ const Register = () => {
                 />
             </div>
 
-            <div>
+            <div className="relative">
                 <label className="label">Password *</label>
                 <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="input-field"
+                    className="input-field pr-10"
                     placeholder="At least 6 characters"
                 />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                    {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+                </button>
             </div>
 
-            <div>
+            <div className="relative">
                 <label className="label">Confirm Password *</label>
                 <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="input-field"
+                    className="input-field pr-10"
                     placeholder="Re-enter your password"
                 />
+                <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                    {showConfirmPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+                </button>
             </div>
 
             <div>
