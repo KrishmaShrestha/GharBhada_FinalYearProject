@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as adminService from '../services/adminService';
 import toast, { Toaster } from 'react-hot-toast';
@@ -34,6 +34,14 @@ const AdminDashboard = () => {
     useEffect(() => {
         fetchDashboardData();
     }, []);
+
+    useEffect(() => {
+        if (activeTab === 'users' && allUsers.length === 0) {
+            fetchAllUsers();
+        } else if (activeTab === 'properties' && allProperties.length === 0) {
+            fetchAllProperties();
+        }
+    }, [activeTab]);
 
     const fetchDashboardData = async (showToast = false) => {
         setLoading(true);
@@ -75,10 +83,14 @@ const AdminDashboard = () => {
 
     const fetchAllUsers = async () => {
         try {
+            console.log('Fetching all users...');
             const data = await adminService.getAllUsers({ page: 1, limit: 100 });
+            console.log('Users data received:', data);
             setAllUsers(data.users || []);
+            console.log('Users set to state:', data.users?.length || 0, 'users');
         } catch (err) {
-            toast.error(err.message);
+            console.error('Error fetching users:', err);
+            toast.error(err.message || 'Failed to load users');
         }
     };
 
@@ -178,6 +190,7 @@ const AdminDashboard = () => {
 
     const COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B'];
 
+
     const tabs = [
         { id: 'overview', label: 'Overview', icon: FiTrendingUp },
         { id: 'analytics', label: 'Analytics', icon: FiDollarSign },
@@ -185,15 +198,30 @@ const AdminDashboard = () => {
         { id: 'properties', label: 'Properties', icon: FiHome },
     ];
 
-    const filteredUsers = allUsers.filter(u => {
-        const matchesSearch = u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.email?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRole = filterRole === 'all' || u.role === filterRole;
-        const matchesStatus = filterStatus === 'all' ||
-            (filterStatus === 'active' && u.is_active) ||
-            (filterStatus === 'suspended' && !u.is_active);
-        return matchesSearch && matchesRole && matchesStatus;
-    });
+    // Calculate filtered users with useMemo for performance
+    const filteredUsers = useMemo(() => {
+        return (allUsers || []).filter(u => {
+            const matchesSearch = (u.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (u.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesRole = filterRole === 'all' || u.role === filterRole;
+            const matchesStatus = filterStatus === 'all' ||
+                (filterStatus === 'active' && u.is_active) ||
+                (filterStatus === 'suspended' && !u.is_active) ||
+                (filterStatus === 'pending' && u.approval_status === 'pending');
+            return matchesSearch && matchesRole && matchesStatus;
+        });
+    }, [allUsers, searchTerm, filterRole, filterStatus]);
+
+    const getInitials = (name) => {
+        if (!name) return '?';
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2);
+    };
 
     if (loading && !stats) {
         return (
@@ -576,120 +604,259 @@ const AdminDashboard = () => {
 
                 {/* Users Tab */}
                 {activeTab === 'users' && (
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-                            <button
-                                onClick={fetchAllUsers}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Refresh Users"
-                            >
-                                <FiRefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                            </button>
-                        </div>
-                        {/* Search and Filters Status */}
-                        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="md:col-span-2">
-                                    <div className="relative">
-                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search users..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-                                <select
-                                    value={filterRole}
-                                    onChange={(e) => setFilterRole(e.target.value)}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    <div className="space-y-8">
+                        {/* Header Section */}
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                                <h2 className="text-3xl font-black text-gray-900 tracking-tight">User Management</h2>
+                                <p className="text-sm text-gray-500 mt-1">Manage and monitor all platform users</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={fetchAllUsers}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all font-semibold shadow-sm"
                                 >
-                                    <option value="all">All Roles</option>
-                                    <option value="owner">Owners</option>
-                                    <option value="tenant">Tenants</option>
-                                </select>
-                                <select
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="all">All Status</option>
-                                    <option value="active">Active</option>
-                                    <option value="suspended">Suspended</option>
-                                </select>
+                                    <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                    Refresh
+                                </button>
+                                <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold shadow-lg shadow-blue-500/30">
+                                    <FiDownload className="w-4 h-4" />
+                                    Export
+                                </button>
                             </div>
                         </div>
 
+                        {/* Quick Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/30">
+                                <div className="flex items-center justify-between mb-2">
+                                    <FiUsers className="w-8 h-8 opacity-80" />
+                                    <div className="text-xs font-bold bg-white/20 px-2 py-1 rounded-full">TOTAL</div>
+                                </div>
+                                <div className="text-3xl font-black mb-1">{allUsers?.length || 0}</div>
+                                <div className="text-xs font-semibold text-blue-100">All Users</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-5 text-white shadow-lg shadow-green-500/30">
+                                <div className="flex items-center justify-between mb-2">
+                                    <FiCheckCircle className="w-8 h-8 opacity-80" />
+                                    <div className="text-xs font-bold bg-white/20 px-2 py-1 rounded-full">ACTIVE</div>
+                                </div>
+                                <div className="text-3xl font-black mb-1">{allUsers?.filter(u => u.is_active).length || 0}</div>
+                                <div className="text-xs font-semibold text-green-100">Active Users</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-purple-500/30">
+                                <div className="flex items-center justify-between mb-2">
+                                    <FiHome className="w-8 h-8 opacity-80" />
+                                    <div className="text-xs font-bold bg-white/20 px-2 py-1 rounded-full">OWNERS</div>
+                                </div>
+                                <div className="text-3xl font-black mb-1">{allUsers?.filter(u => u.role === 'owner').length || 0}</div>
+                                <div className="text-xs font-semibold text-purple-100">Property Owners</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg shadow-orange-500/30">
+                                <div className="flex items-center justify-between mb-2">
+                                    <FiUsers className="w-8 h-8 opacity-80" />
+                                    <div className="text-xs font-bold bg-white/20 px-2 py-1 rounded-full">TENANTS</div>
+                                </div>
+                                <div className="text-3xl font-black mb-1">{allUsers?.filter(u => u.role === 'tenant').length || 0}</div>
+                                <div className="text-xs font-semibold text-orange-100">Tenants</div>
+                            </div>
+                        </div>
+                        {/* Search and Filters */}
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+                            <div className="flex flex-col lg:flex-row gap-4">
+                                <div className="relative flex-1">
+                                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                        <FiSearch className="w-5 h-5" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search users by name, email, or phone number..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all outline-none text-sm font-medium placeholder:text-gray-400"
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            onClick={() => setSearchTerm('')}
+                                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        >
+                                            <FiX className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="relative min-w-[160px]">
+                                        <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        <select
+                                            value={filterRole}
+                                            onChange={(e) => setFilterRole(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all outline-none appearance-none text-sm font-semibold cursor-pointer"
+                                        >
+                                            <option value="all">All Roles</option>
+                                            <option value="owner">Owners</option>
+                                            <option value="tenant">Tenants</option>
+                                        </select>
+                                    </div>
+                                    <div className="relative min-w-[160px]">
+                                        <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        <select
+                                            value={filterStatus}
+                                            onChange={(e) => setFilterStatus(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all outline-none appearance-none text-sm font-semibold cursor-pointer"
+                                        >
+                                            <option value="all">All Status</option>
+                                            <option value="active">Active</option>
+                                            <option value="suspended">Suspended</option>
+                                            <option value="pending">Pending</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            {(searchTerm || filterRole !== 'all' || filterStatus !== 'all') && (
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                                    <p className="text-sm text-gray-600">
+                                        <span className="font-semibold text-gray-900">{filteredUsers.length}</span> {filteredUsers.length === 1 ? 'user' : 'users'} found
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            setSearchTerm('');
+                                            setFilterRole('all');
+                                            setFilterStatus('all');
+                                        }}
+                                        className="text-sm text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                                    >
+                                        <FiX className="w-4 h-4" /> Clear filters
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Users Table */}
-                        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <table className="min-w-full">
+                                    <thead>
+                                        <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+                                            <th className="px-8 py-5 text-left">
+                                                <span className="text-xs font-black text-gray-600 uppercase tracking-wider">User</span>
+                                            </th>
+                                            <th className="px-6 py-5 text-left">
+                                                <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Contact</span>
+                                            </th>
+                                            <th className="px-6 py-5 text-left">
+                                                <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Role</span>
+                                            </th>
+                                            <th className="px-6 py-5 text-left">
+                                                <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Status</span>
+                                            </th>
+                                            <th className="px-6 py-5 text-left">
+                                                <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Trust Level</span>
+                                            </th>
+                                            <th className="px-8 py-5 text-right">
+                                                <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Actions</span>
+                                            </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredUsers.map((u) => (
-                                            <tr key={u.user_id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="font-bold text-gray-900">{u.full_name}</div>
-                                                        {u.role === 'owner' && u.trust_level === 'trusted' && (
-                                                            <span className="bg-blue-600 text-white text-[8px] px-2 py-0.5 rounded-full font-black shadow-sm">
-                                                                TRUSTED
-                                                            </span>
-                                                        )}
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredUsers.length > 0 ? filteredUsers.map((u, index) => (
+                                            <tr key={u.user_id} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-transparent transition-all duration-200 group">
+                                                <td className="px-8 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="relative">
+                                                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow-lg shadow-blue-500/30 ring-4 ring-blue-50 group-hover:ring-blue-100 transition-all">
+                                                                {getInitials(u.full_name)}
+                                                            </div>
+                                                            {u.is_active && (
+                                                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="font-bold text-gray-900 text-base group-hover:text-blue-600 transition-colors truncate">{u.full_name}</div>
+                                                            <div className="text-xs text-gray-500 font-medium mt-0.5">ID: {String(u.user_id || '').substring(0, 8)}</div>
+                                                        </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <Badge variant={u.role === 'owner' ? 'primary' : 'success'}>
-                                                        {u.role}
-                                                    </Badge>
+                                                <td className="px-6 py-5">
+                                                    <div className="text-sm font-semibold text-gray-900">{u.email}</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">{u.phone || 'No phone'}</div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <Badge variant={u.is_active ? 'success' : 'danger'}>
-                                                        {u.is_active ? 'Active' : 'Suspended'}
-                                                    </Badge>
+                                                <td className="px-6 py-5">
+                                                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs ${u.role === 'owner'
+                                                        ? 'bg-purple-100 text-purple-700 ring-1 ring-purple-200'
+                                                        : 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200'
+                                                        }`}>
+                                                        {u.role === 'owner' ? <FiHome className="w-3.5 h-3.5" /> : <FiUsers className="w-3.5 h-3.5" />}
+                                                        {u.role?.toUpperCase()}
+                                                    </div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                    <div className="flex gap-2">
+                                                <td className="px-6 py-5">
+                                                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs ${u.is_active
+                                                        ? 'bg-green-100 text-green-700 ring-1 ring-green-200'
+                                                        : 'bg-red-100 text-red-700 ring-1 ring-red-200'
+                                                        }`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+                                                        {u.is_active ? 'ACTIVE' : 'SUSPENDED'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    {u.role === 'owner' && (
+                                                        <div>
+                                                            {u.trust_level === 'trusted' ? (
+                                                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg font-black text-xs shadow-md shadow-blue-500/30">
+                                                                    <FiCheckCircle className="w-3.5 h-3.5" />
+                                                                    VERIFIED
+                                                                </div>
+                                                            ) : (
+                                                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs">
+                                                                    <FiClock className="w-3.5 h-3.5" />
+                                                                    STANDARD
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <div className="flex justify-end gap-2">
                                                         <button
                                                             onClick={() => setSelectedUser(u)}
-                                                            className="text-blue-600 hover:text-blue-900"
+                                                            className="p-2.5 text-blue-600 hover:bg-blue-100 rounded-xl transition-all hover:scale-110 active:scale-95"
                                                             title="View Details"
                                                         >
-                                                            <FiEye className="w-4 h-4" />
+                                                            <FiEye className="w-5 h-5" />
                                                         </button>
                                                         {u.is_active ? (
                                                             <button
                                                                 onClick={() => handleSuspendUser(u.user_id)}
-                                                                className="text-red-600 hover:text-red-900"
+                                                                className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-xl transition-all font-bold text-xs hover:scale-105 active:scale-95"
                                                                 title="Suspend"
                                                             >
-                                                                Suspend
+                                                                SUSPEND
                                                             </button>
                                                         ) : (
                                                             <button
                                                                 onClick={() => adminService.activateUser(u.user_id).then(fetchAllUsers)}
-                                                                className="text-green-600 hover:text-green-900"
+                                                                className="px-3 py-2 text-green-600 hover:bg-green-100 rounded-xl transition-all font-bold text-xs hover:scale-105 active:scale-95"
                                                                 title="Activate"
                                                             >
-                                                                Activate
+                                                                ACTIVATE
                                                             </button>
                                                         )}
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
+                                        )) : (
+                                            <tr>
+                                                <td colSpan="6" className="px-8 py-16 text-center">
+                                                    <div className="flex flex-col items-center justify-center">
+                                                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                                            <FiUsers className="w-10 h-10 text-gray-300" />
+                                                        </div>
+                                                        <h3 className="text-lg font-bold text-gray-900 mb-1">No users found</h3>
+                                                        <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -851,70 +1018,177 @@ const AdminDashboard = () => {
                 <Modal
                     isOpen={!!selectedUser}
                     onClose={() => setSelectedUser(null)}
-                    title="User Details"
+                    title="User Profile Management"
                     size="lg"
                 >
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                            <div className="col-span-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Full Name</label>
-                                <p className="text-gray-900 font-bold">{selectedUser.full_name}</p>
+                    <div className="space-y-8">
+                        {/* Profile Header */}
+                        <div className="flex items-center gap-6 p-6 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-lg">
+                            <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl font-black shadow-inner border border-white/30">
+                                {getInitials(selectedUser.full_name)}
                             </div>
-                            <div className="col-span-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Email</label>
-                                <p className="text-gray-900 font-bold">{selectedUser.email}</p>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <h2 className="text-2xl font-black tracking-tight">{selectedUser.full_name}</h2>
+                                    <Badge
+                                        variant={selectedUser.role === 'owner' ? 'warning' : 'info'}
+                                        className="bg-white/20 text-white border-none backdrop-blur-sm"
+                                    >
+                                        {selectedUser.role?.toUpperCase()}
+                                    </Badge>
+                                </div>
+                                <p className="text-blue-100 flex items-center gap-2 text-sm">
+                                    <FiUsers className="w-4 h-4 opactiy-70" /> User ID: #{String(selectedUser.user_id || '').substring(0, 8)}
+                                </p>
                             </div>
-                            <div className="col-span-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Phone</label>
-                                <p className="text-gray-900 font-bold">{selectedUser.phone || 'N/A'}</p>
-                            </div>
-                            <div className="col-span-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Role</label>
-                                <p><Badge variant={selectedUser.role === 'owner' ? 'primary' : 'success'}>{selectedUser.role}</Badge></p>
-                            </div>
-                            <div className="col-span-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Status</label>
-                                <p><Badge variant={selectedUser.is_active ? 'success' : 'danger'}>
-                                    {selectedUser.is_active ? 'Active' : 'Suspended'}
-                                </Badge></p>
-                            </div>
-                            <div className="col-span-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Joined</label>
-                                <p className="text-gray-900 font-bold">{selectedUser.created_at ? format(new Date(selectedUser.created_at), 'PPP') : 'N/A'}</p>
+                            <div className="text-right">
+                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black shadow-sm ${selectedUser.is_active ? 'bg-green-500/20 text-green-100 border border-green-500/30' : 'bg-red-500/20 text-red-100 border border-red-500/30'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${selectedUser.is_active ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
+                                    {selectedUser.is_active ? 'ACTIVE' : 'SUSPENDED'}
+                                </div>
+                                <p className="text-[10px] text-blue-200 mt-2 font-black uppercase tracking-widest opacity-70">Status</p>
                             </div>
                         </div>
 
-                        <div className="h-px bg-gray-100 w-full" />
+                        {/* Info Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                                        Contact Information
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 transition-all hover:border-blue-200 group">
+                                            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-blue-600 border border-gray-100 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                <FiUsers />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Full Name</p>
+                                                <p className="font-bold text-gray-900">{selectedUser.full_name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 transition-all hover:border-blue-200 group">
+                                            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-blue-600 border border-gray-100 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                <FiUsers />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Email Address</p>
+                                                <p className="font-bold text-gray-900 truncate">{selectedUser.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 transition-all hover:border-blue-200 group">
+                                            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-blue-600 border border-gray-100 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                <FiUsers />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Phone Number</p>
+                                                <p className="font-bold text-gray-900">{selectedUser.phone || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <div className="w-1.5 h-6 bg-purple-600 rounded-full" />
+                                        Activity & Logs
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Account Created</p>
+                                            <p className="font-bold text-gray-900">{selectedUser.created_at ? format(new Date(selectedUser.created_at), 'PPP') : 'N/A'}</p>
+                                            <p className="text-[10px] text-gray-400 mt-1">{selectedUser.created_at ? format(new Date(selectedUser.created_at), 'p') : ''}</p>
+                                        </div>
+                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Last System Update</p>
+                                            <p className="font-bold text-gray-900">{selectedUser.updated_at ? format(new Date(selectedUser.updated_at), 'PPP') : 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Verification Section */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-900">Verification & Identification</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <label className="text-[10px] font-black tracking-widest text-gray-400 mb-1 block uppercase">Citizenship / ID Number</label>
-                                    <p className="font-bold text-gray-900">{selectedUser.citizenship_number || 'Not provided'}</p>
+                            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                <div className="w-1.5 h-6 bg-green-600 rounded-full" />
+                                Verification Documentation
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Government Issued ID</p>
+                                    <p className="text-xl font-black text-gray-900 mb-4">{selectedUser.citizenship_number || 'IDENTIFICATION PENDING'}</p>
+                                    {selectedUser.id_proof_url ? (
+                                        <div className="aspect-video bg-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-zoom-in group">
+                                            <img
+                                                src={selectedUser.id_proof_url.startsWith('http') ? selectedUser.id_proof_url : `${IMG_BASE_URL}/${selectedUser.id_proof_url.replace(/\\/g, '/')}`}
+                                                alt="ID Proof"
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                                onClick={() => window.open(selectedUser.id_proof_url.startsWith('http') ? selectedUser.id_proof_url : `${IMG_BASE_URL}/${selectedUser.id_proof_url.replace(/\\/g, '/')}`, '_blank')}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="aspect-video bg-gray-100 border border-dashed border-gray-300 rounded-xl flex items-center justify-center text-gray-400 italic text-sm">
+                                            No ID document uploaded
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <label className="text-[10px] font-black tracking-widest text-gray-400 mb-1 block uppercase">Permanent Address</label>
-                                    <p className="font-bold text-gray-900">{selectedUser.permanent_address || 'Not provided'}</p>
+                                <div className="space-y-6">
+                                    {selectedUser.role === 'owner' && (
+                                        <div className="p-5 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200 text-white">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                                    <FiDollarSign className="text-white" />
+                                                </div>
+                                                <Badge className="bg-white/20 text-white border-none uppercase text-[8px] font-black">Settlement Bank</Badge>
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] font-black uppercase text-blue-200 tracking-widest">Bank Name</p>
+                                                <p className="text-lg font-black mb-3">{selectedUser.bank_name || 'NOT CONFIGURED'}</p>
+                                                <p className="text-[8px] font-black uppercase text-blue-200 tracking-widest">Account Number</p>
+                                                <p className="text-xl font-mono tracking-tighter">{selectedUser.bank_account_number || 'XXXX-XXXX-XXXX'}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="p-4 bg-white rounded-xl border border-gray-100">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Permanent Address</p>
+                                        <p className="text-sm font-bold text-gray-900">{selectedUser.permanent_address || 'Address not verified'}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {selectedUser.role === 'owner' && (
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-black uppercase tracking-widest text-gray-900">Bank Details</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100/50">
-                                        <label className="text-[10px] font-black tracking-widest text-blue-400 mb-1 block uppercase">Bank Name</label>
-                                        <p className="font-bold text-blue-900">{selectedUser.bank_name || 'Not provided'}</p>
-                                    </div>
-                                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100/50">
-                                        <label className="text-[10px] font-black tracking-widest text-blue-400 mb-1 block uppercase">Account Number</label>
-                                        <p className="font-bold text-blue-900">{selectedUser.bank_account_number || 'Not provided'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        {/* Management Actions */}
+                        <div className="flex gap-4 pt-6 border-t border-gray-100">
+                            {selectedUser.is_active ? (
+                                <button
+                                    onClick={() => handleSuspendUser(selectedUser.user_id)}
+                                    className="flex-1 bg-red-600 text-white p-4 rounded-2xl font-black hover:bg-red-700 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-2 transform active:scale-95"
+                                >
+                                    <FiAlertCircle /> Suspend User Account
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => adminService.activateUser(selectedUser.user_id).then(() => {
+                                        fetchAllUsers();
+                                        setSelectedUser(null);
+                                        toast.success('User account activated');
+                                    })}
+                                    className="flex-1 bg-green-600 text-white p-4 rounded-2xl font-black hover:bg-green-700 transition-all shadow-lg shadow-green-100 flex items-center justify-center gap-2 transform active:scale-95"
+                                >
+                                    <FiCheckCircle /> Activate User Account
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setSelectedUser(null)}
+                                className="px-8 bg-gray-100 text-gray-600 p-4 rounded-2xl font-black hover:bg-gray-200 transition-all flex items-center justify-center transform active:scale-95"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </Modal>
             )}
