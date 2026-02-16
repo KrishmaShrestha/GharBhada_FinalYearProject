@@ -2,6 +2,7 @@ import React from 'react';
 import { FiUsers, FiCalendar, FiClock, FiCheck, FiX, FiFileText, FiMail, FiPhone, FiMapPin, FiCreditCard } from 'react-icons/fi';
 import { format } from 'date-fns';
 import Badge from '../../components/common/Badge';
+import { getProfileAvatar } from '../../utils/urlHelper';
 
 const BookingsTab = ({ bookingRequests, onAccept, onReject, onApproveDuration, onCreateAgreement, onMoreInfo }) => {
     const getStatusConfig = (status) => {
@@ -83,8 +84,12 @@ const BookingsTab = ({ bookingRequests, onAccept, onReject, onApproveDuration, o
                                         <div className="lg:col-span-2 space-y-4">
                                             {/* Tenant Profile */}
                                             <div className="flex items-start gap-4">
-                                                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-md">
-                                                    {request.tenant_name?.charAt(0) || 'T'}
+                                                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-md overflow-hidden">
+                                                    <img
+                                                        src={getProfileAvatar({ full_name: request.tenant_name, profile_image: request.tenant_image })}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                    />
                                                 </div>
                                                 <div className="flex-1">
                                                     <h3 className="text-xl font-bold text-gray-900 mb-1">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiHome, FiSearch, FiPlus, FiSettings, FiTrash2, FiExternalLink } from 'react-icons/fi';
 import Badge from '../../components/common/Badge';
+import { getAssetUrl } from '../../utils/urlHelper';
 
 const PropertiesTab = ({ properties, searchTerm, setSearchTerm, onAddProperty, onEditProperty, onDeleteProperty, IMG_BASE_URL }) => {
 
@@ -71,9 +72,7 @@ const PropertiesTab = ({ properties, searchTerm, setSearchTerm, onAddProperty, o
                             <div className="h-48 bg-gray-100 relative overflow-hidden">
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10" />
                                 <img
-                                    src={property.images?.[0] ?
-                                        (property.images[0].startsWith('http') ? property.images[0] : `${IMG_BASE_URL}/${property.images[0].replace(/\\/g, '/')}`) :
-                                        'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'}
+                                    src={getAssetUrl(property.images?.[0])}
                                     alt={property.title}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />

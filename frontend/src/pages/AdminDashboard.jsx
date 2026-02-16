@@ -13,8 +13,7 @@ import StatCard from '../components/admin/StatCard';
 import Modal from '../components/common/Modal';
 import Badge from '../components/common/Badge';
 import { SkeletonCard, SkeletonTable, SkeletonChart } from '../components/common/Skeleton';
-
-const IMG_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+import { getAssetUrl } from '../utils/urlHelper';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
@@ -437,7 +436,7 @@ const AdminDashboard = () => {
                                                 <div className="flex items-center gap-4 flex-1 min-w-0">
                                                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
                                                         <img
-                                                            src={p.images?.[0] ? (p.images[0].startsWith('http') ? p.images[0] : `${IMG_BASE_URL}/${p.images[0].replace(/\\/g, '/')}`) : ''}
+                                                            src={getAssetUrl(p.images?.[0])}
                                                             className="w-full h-full object-cover"
                                                             alt=""
                                                         />
@@ -497,7 +496,7 @@ const AdminDashboard = () => {
                                         <div key={p.property_id} className="group cursor-pointer" onClick={() => setSelectedProperty(p)}>
                                             <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-3 relative">
                                                 <img
-                                                    src={p.images?.[0] ? (p.images[0].startsWith('http') ? p.images[0] : `${IMG_BASE_URL}/${p.images[0].replace(/\\/g, '/')}`) : ''}
+                                                    src={getAssetUrl(p.images?.[0])}
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                     alt={p.title}
                                                 />
@@ -930,9 +929,7 @@ const AdminDashboard = () => {
                                         <div className="h-48 bg-gray-100 relative overflow-hidden">
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10" />
                                             <img
-                                                src={p.images?.[0] ?
-                                                    (p.images[0].startsWith('http') ? p.images[0] : `${IMG_BASE_URL}/${p.images[0].replace(/\\/g, '/')}`) :
-                                                    'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'}
+                                                src={getAssetUrl(p.images?.[0])}
                                                 alt={p.title}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             />
@@ -1124,10 +1121,10 @@ const AdminDashboard = () => {
                                     {selectedUser.id_proof_url ? (
                                         <div className="aspect-video bg-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-zoom-in group">
                                             <img
-                                                src={selectedUser.id_proof_url.startsWith('http') ? selectedUser.id_proof_url : `${IMG_BASE_URL}/${selectedUser.id_proof_url.replace(/\\/g, '/')}`}
+                                                src={getAssetUrl(selectedUser.id_proof_url)}
                                                 alt="ID Proof"
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                                                onClick={() => window.open(selectedUser.id_proof_url.startsWith('http') ? selectedUser.id_proof_url : `${IMG_BASE_URL}/${selectedUser.id_proof_url.replace(/\\/g, '/')}`, '_blank')}
+                                                onClick={() => window.open(getAssetUrl(selectedUser.id_proof_url), '_blank')}
                                             />
                                         </div>
                                     ) : (
@@ -1224,10 +1221,10 @@ const AdminDashboard = () => {
                                     {selectedProperty.images.map((img, idx) => (
                                         <div key={idx} className="aspect-video rounded-2xl overflow-hidden border border-gray-100 shadow-sm transition-all hover:shadow-lg cursor-zoom-in group">
                                             <img
-                                                src={img.startsWith('http') ? img : `${IMG_BASE_URL}/${img.replace(/\\/g, '/')}`}
+                                                src={getAssetUrl(img)}
                                                 alt={`Property ${idx + 1}`}
                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                onClick={() => window.open(img.startsWith('http') ? img : `${IMG_BASE_URL}/${img.replace(/\\/g, '/')}`, '_blank')}
+                                                onClick={() => window.open(getAssetUrl(img), '_blank')}
                                             />
                                         </div>
                                     ))}
