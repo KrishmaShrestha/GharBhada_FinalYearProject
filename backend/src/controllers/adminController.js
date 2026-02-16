@@ -50,7 +50,7 @@ exports.getAllUsers = async (req, res) => {
             WHERE role = 'owner' 
             AND is_verified = TRUE 
             AND trust_level = 'basic' 
-            AND created_at <= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+            AND created_at <= DATE_SUB(NOW(), INTERVAL 12 MONTH)
         `);
 
         const [users] = await pool.query(query, params);
@@ -428,7 +428,7 @@ exports.getDashboardStats = async (req, res) => {
                 SUM(CASE WHEN role = 'owner' THEN 1 ELSE 0 END) as total_owners,
                 SUM(CASE WHEN role = 'tenant' THEN 1 ELSE 0 END) as total_tenants,
                 SUM(CASE WHEN approval_status = 'pending' THEN 1 ELSE 0 END) as pending_approvals,
-                SUM(CASE WHEN (trust_level = 'trusted' OR (role = 'owner' AND created_at <= DATE_SUB(NOW(), INTERVAL 1 MONTH) AND is_verified = TRUE)) AND role = 'owner' THEN 1 ELSE 0 END) as trusted_owners
+                SUM(CASE WHEN (trust_level = 'trusted' OR (role = 'owner' AND created_at <= DATE_SUB(NOW(), INTERVAL 12 MONTH) AND is_verified = TRUE)) AND role = 'owner' THEN 1 ELSE 0 END) as trusted_owners
             FROM users WHERE role != 'admin'
         `);
 

@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
         let query = `
       SELECT p.*, u.full_name as owner_name, u.phone as owner_phone,
       u.created_at as owner_since,
-      (TIMESTAMPDIFF(MONTH, u.created_at, NOW()) >= 1) as is_trusted_owner,
+      (TIMESTAMPDIFF(MONTH, u.created_at, NOW()) >= 12) as is_trusted_owner,
       (SELECT AVG(rating) FROM reviews WHERE property_id = p.property_id) as avg_rating,
       (SELECT COUNT(*) FROM reviews WHERE property_id = p.property_id) as review_count
       FROM properties p
@@ -85,7 +85,7 @@ router.get('/:id', async (req, res) => {
         const [properties] = await pool.query(
             `SELECT p.*, u.full_name as owner_name, u.phone as owner_phone, u.email as owner_email,
       u.bank_name, u.bank_account_number, u.created_at as owner_since,
-      (TIMESTAMPDIFF(MONTH, u.created_at, NOW()) >= 1) as is_trusted_owner,
+      (TIMESTAMPDIFF(MONTH, u.created_at, NOW()) >= 12) as is_trusted_owner,
       (SELECT AVG(rating) FROM reviews WHERE property_id = p.property_id) as avg_rating,
       (SELECT COUNT(*) FROM reviews WHERE property_id = p.property_id) as review_count
       FROM properties p
@@ -127,7 +127,7 @@ router.post('/', authenticate, authorize('owner', 'admin'), upload.array('proper
             house_rules, amenities
         } = req.body;
 
-        const images = req.files ? req.files.map(file => file.path) : [];
+        const images = req.files ? req.files.map(file => file.path.replace(/\\/g, '/')) : [];
 
         const [result] = await pool.query(
             `INSERT INTO properties (
@@ -196,7 +196,7 @@ router.post('/:id/images', authenticate, authorize('owner', 'admin'), upload.arr
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        const newImages = req.files ? req.files.map(file => file.path) : [];
+        const newImages = req.files ? req.files.map(file => file.path.replace(/\\/g, '/')) : [];
         const existingImages = JSON.parse(properties[0].images || '[]');
         const updatedImages = [...existingImages, ...newImages];
 

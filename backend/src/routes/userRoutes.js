@@ -35,11 +35,12 @@ router.put('/profile', authenticate, upload.single('profileImage'), async (req, 
         if (full_name) updates.full_name = full_name;
         if (phone) updates.phone = phone;
         if (req.file) {
-            // Path: public/uploads/profiles/filename.jpg -> /uploads/profiles/filename.jpg
-            const relativePath = req.file.path.replace(/\\/g, '/');
-            updates.profile_image = relativePath.includes('uploads')
-                ? '/' + relativePath.substring(relativePath.indexOf('uploads'))
-                : '/' + relativePath;
+            const normalizedPath = req.file.path.replace(/\\/g, '/');
+            // Ensure path starts from uploads folder
+            const uploadsIndex = normalizedPath.indexOf('uploads');
+            updates.profile_image = uploadsIndex !== -1
+                ? '/' + normalizedPath.substring(uploadsIndex)
+                : '/' + normalizedPath;
         }
 
         if (Object.keys(updates).length === 0) {
