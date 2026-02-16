@@ -1,5 +1,6 @@
 import { FiHome, FiMapPin, FiCalendar, FiZap, FiDroplet, FiTrash2, FiShield, FiExternalLink } from 'react-icons/fi';
 import Badge from './Badge';
+import { getAssetUrl } from '../../utils/urlHelper';
 
 const TenantPropertyCard = ({ property, onClick }) => {
     // Determine if owner is trusted (in real app, this would come from the property object or owner association)
@@ -10,7 +11,7 @@ const TenantPropertyCard = ({ property, onClick }) => {
             {/* Image Section */}
             <div className="h-52 relative overflow-hidden">
                 <img
-                    src={property.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+                    src={getAssetUrl(property.images?.[0])}
                     alt={property.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />

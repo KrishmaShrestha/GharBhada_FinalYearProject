@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './common/NotificationBell';
 import Logo from './common/Logo';
+import { getProfileAvatar } from '../utils/urlHelper';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -32,7 +33,18 @@ const Navbar = () => {
                         {user ? (
                             <>
                                 <NotificationBell />
-                                <span className="hidden sm:inline-block text-sm font-black text-gray-900 uppercase tracking-tighter">Hello, {user.full_name}</span>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-primary-50 border border-primary-100 flex items-center justify-center overflow-hidden">
+                                        <img
+                                            src={getProfileAvatar(user)}
+                                            alt={user.full_name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <span className="hidden sm:inline-block text-xs font-black text-gray-900 uppercase tracking-tighter">
+                                        {user.full_name}
+                                    </span>
+                                </div>
                                 <button
                                     onClick={logout}
                                     className="btn-secondary"

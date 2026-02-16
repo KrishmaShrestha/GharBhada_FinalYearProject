@@ -10,8 +10,7 @@ import {
 } from 'react-icons/fi';
 import Badge from '../components/common/Badge';
 import BookingModal from '../components/common/BookingModal';
-
-const IMG_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
+import { getAssetUrl, getProfileAvatar } from '../utils/urlHelper';
 
 const PropertyDetails = () => {
     const { id } = useParams();
@@ -106,9 +105,7 @@ const PropertyDetails = () => {
                         <div className="space-y-4">
                             <div className="aspect-[16/9] w-full rounded-[2rem] overflow-hidden bg-gray-200 border border-gray-100 shadow-xl shadow-gray-200/50">
                                 <img
-                                    src={property.images?.[activeImage] ?
-                                        (property.images[activeImage].startsWith('http') ? property.images[activeImage] : `${IMG_BASE_URL}/${property.images[activeImage].replace(/\\/g, '/')}`) :
-                                        'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'}
+                                    src={getAssetUrl(property.images?.[activeImage])}
                                     alt={property.title}
                                     className="w-full h-full object-cover"
                                 />
@@ -122,7 +119,7 @@ const PropertyDetails = () => {
                                             }`}
                                     >
                                         <img
-                                            src={img ? (img.startsWith('http') ? img : `${IMG_BASE_URL}/${img.replace(/\\/g, '/')}`) : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'}
+                                            src={getAssetUrl(img)}
                                             className="w-full h-full object-cover"
                                         />
                                     </button>
@@ -260,8 +257,12 @@ const PropertyDetails = () => {
 
                             {/* Owner Trust Card */}
                             <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-2xl bg-primary-50 border-2 border-primary-200 flex items-center justify-center text-primary-600 text-2xl font-black">
-                                    {property.owner_name?.charAt(0) || 'O'}
+                                <div className="w-16 h-16 rounded-2xl bg-primary-50 border-2 border-primary-200 flex items-center justify-center overflow-hidden">
+                                    <img
+                                        src={getProfileAvatar({ full_name: property.owner_name, profile_image: property.owner_image })}
+                                        className="w-full h-full object-cover"
+                                        alt={property.owner_name}
+                                    />
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2">
