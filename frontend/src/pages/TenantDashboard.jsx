@@ -12,6 +12,7 @@ import {
     FiTool
 } from 'react-icons/fi';
 import { format } from 'date-fns';
+import { getAssetUrl, getProfileAvatar } from '../utils/urlHelper';
 import StatCard from '../components/admin/StatCard';
 import Modal from '../components/common/Modal';
 import Badge from '../components/common/Badge';
@@ -227,18 +228,11 @@ const TenantDashboard = () => {
                                 <p className="text-xs text-gray-500 capitalize">{user?.role} Account</p>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-primary-50 border-2 border-primary-200 flex items-center justify-center text-primary-700 font-bold overflow-hidden">
-                                {user?.profile_image ? (
-                                    <img
-                                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                            e.target.src = `https://ui-avatars.com/api/?name=${user?.full_name}&background=random`;
-                                        }}
-                                    />
-                                ) : (
-                                    user?.full_name?.charAt(0)
-                                )}
+                                <img
+                                    src={getProfileAvatar(user)}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
                         </div>
                     </div>
@@ -369,98 +363,130 @@ const TenantDashboard = () => {
                                 <button onClick={() => setActiveTab('search')} className="bg-primary-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-primary-700 transition-all">Browse Properties</button>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                {bookings.map(booking => (
-                                    <div key={booking.booking_id || booking.request_id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
-                                        <div className="flex items-center gap-6">
-                                            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
-                                                <img src={booking.property_image} alt="" className="w-full h-full object-cover" />
+                            <div className="space-y-8">
+                                {bookings.map(booking => {
+                                    const steps = [
+                                        { id: 'pending', label: 'Booking', status: booking.status === 'pending' ? 'active' : 'completed' },
+                                        { id: 'accepted', label: 'Approval', status: booking.status === 'accepted' ? 'active' : (['pending'].includes(booking.status) ? 'pending' : 'completed') },
+                                        { id: 'duration', label: 'Duration', status: booking.status === 'duration_pending' ? 'active' : (['pending', 'accepted'].includes(booking.status) ? 'pending' : 'completed') },
+                                        { id: 'agreement', label: 'Agreement', status: booking.status === 'agreement_pending' ? 'active' : (['pending', 'accepted', 'duration_pending'].includes(booking.status) ? 'pending' : 'completed') },
+                                        { id: 'deposit', label: 'Deposit', status: booking.status === 'payment_pending' ? 'active' : (['active', 'completed'].includes(booking.status) ? 'completed' : 'pending') },
+                                    ];
+
+                                    return (
+                                        <div key={booking.booking_id || booking.request_id} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-8">
+                                                <div className="flex items-center gap-6">
+                                                    <div className="w-24 h-24 rounded-3xl overflow-hidden bg-gray-100 flex-shrink-0 shadow-inner">
+                                                        <img src={getAssetUrl(booking.property_image)} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h4 className="font-black text-gray-900 text-xl tracking-tight">{booking.property_title}</h4>
+                                                            <Badge variant={
+                                                                booking.status === 'active' ? 'success' :
+                                                                    booking.status === 'rejected' ? 'danger' : 'primary'
+                                                            } size="sm">{booking.status?.toUpperCase().replace('_', ' ')}</Badge>
+                                                        </div>
+                                                        <p className="text-sm text-gray-400 font-medium mb-3 flex items-center gap-1"><FiMapPin /> {booking.property_address}</p>
+                                                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1"><FiClock /> Requested: {formatDate(booking.created_at || booking.requested_at || booking.booking_date)}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-3">
+                                                    {booking.status === 'accepted' && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedBooking(booking);
+                                                                setIsDurationModalOpen(true);
+                                                            }}
+                                                            className="px-8 py-3 rounded-2xl text-sm font-black bg-primary-600 text-white hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 flex items-center gap-2"
+                                                        >
+                                                            Select Duration <FiArrowRight />
+                                                        </button>
+                                                    )}
+
+                                                    {booking.status === 'agreement_pending' && (
+                                                        <button
+                                                            onClick={async () => {
+                                                                const agm = agreements.find(a => a.booking_id === (booking.booking_id || booking.request_id));
+                                                                if (agm) {
+                                                                    setSelectedAgreement(agm);
+                                                                    setIsAgreementModalOpen(true);
+                                                                } else {
+                                                                    toast.loading('Loading agreement...');
+                                                                    const data = await tenantService.getMyAgreements();
+                                                                    const found = data.agreements.find(a => a.booking_id === (booking.booking_id || booking.request_id));
+                                                                    toast.dismiss();
+                                                                    if (found) {
+                                                                        setSelectedAgreement(found);
+                                                                        setIsAgreementModalOpen(true);
+                                                                    } else {
+                                                                        toast.error('Agreement not found yet');
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="px-8 py-3 rounded-2xl text-sm font-black bg-primary-600 text-white hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 flex items-center gap-2"
+                                                        >
+                                                            Review & Sign Agreement <FiFileText />
+                                                        </button>
+                                                    )}
+
+                                                    {booking.status === 'payment_pending' && (
+                                                        <button
+                                                            onClick={() => {
+                                                                const agm = agreements.find(a => a.booking_id === (booking.booking_id || booking.request_id));
+                                                                setSelectedPayment({
+                                                                    type: 'deposit',
+                                                                    amount: 5000,
+                                                                    owner_name: agm?.owner_name || 'Owner',
+                                                                    bank_name: agm?.bank_name,
+                                                                    bank_account_number: agm?.bank_account_number,
+                                                                    booking_id: booking.booking_id || booking.request_id
+                                                                });
+                                                                setIsPaymentModalOpen(true);
+                                                            }}
+                                                            className="px-8 py-3 rounded-2xl text-sm font-black bg-green-600 text-white hover:bg-green-700 transition-all shadow-lg shadow-green-200 flex items-center gap-2"
+                                                        >
+                                                            Pay NPR 5,000 Deposit <FiDollarSign />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-gray-900 text-lg">{booking.property_title}</h4>
-                                                <p className="text-sm text-gray-500 mb-2">{booking.property_address}</p>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-xs text-gray-400 flex items-center gap-1"><FiCalendar /> {formatDate(booking.created_at || booking.requested_at || booking.booking_date)}</span>
-                                                    <Badge variant={
-                                                        booking.status === 'pending' ? 'warning' :
-                                                            booking.status === 'accepted' ? 'primary' :
-                                                                booking.status === 'duration_pending' ? 'warning' :
-                                                                    booking.status === 'agreement_pending' ? 'primary' :
-                                                                        booking.status === 'payment_pending' ? 'success' :
-                                                                            booking.status === 'active' ? 'success' : 'danger'
-                                                    }>
-                                                        {booking.status === 'pending' ? 'Pending Approval' :
-                                                            booking.status === 'accepted' ? 'Initial Approval' :
-                                                                booking.status === 'duration_pending' ? 'Waiting for Owner Duration Review' :
-                                                                    booking.status === 'agreement_pending' ? 'Agreement Ready for Review' :
-                                                                        booking.status === 'payment_pending' ? 'Final Payment Needed' :
-                                                                            booking.status.toUpperCase()}
-                                                    </Badge>
+
+                                            {/* Flow Tracker */}
+                                            <div className="pt-8 border-t border-gray-50">
+                                                <div className="flex items-center justify-between relative">
+                                                    {/* Progress Line */}
+                                                    <div className="absolute top-5 left-0 w-full h-0.5 bg-gray-100 -z-10">
+                                                        <div
+                                                            className="h-full bg-primary-500 transition-all duration-1000"
+                                                            style={{
+                                                                width: `${(steps.filter(s => s.status === 'completed').length / (steps.length - 1)) * 100}%`
+                                                            }}
+                                                        />
+                                                    </div>
+
+                                                    {steps.map((step, idx) => (
+                                                        <div key={idx} className="flex flex-col items-center gap-2">
+                                                            <div className={`
+                                                                w-10 h-10 rounded-full flex items-center justify-center text-xs font-black transition-all border-4
+                                                                ${step.status === 'completed' ? 'bg-primary-600 border-primary-100 text-white shadow-lg shadow-primary-50' :
+                                                                    step.status === 'active' ? 'bg-white border-primary-500 text-primary-600 scale-110 shadow-xl' :
+                                                                        'bg-white border-gray-100 text-gray-300'}
+                                                            `}>
+                                                                {step.status === 'completed' ? <FiCheckCircle /> : idx + 1}
+                                                            </div>
+                                                            <span className={`text-[10px] font-black uppercase tracking-widest ${step.status === 'active' ? 'text-primary-600' : 'text-gray-400'}`}>
+                                                                {step.label}
+                                                            </span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <button className="flex-1 md:flex-none px-6 py-2 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">Details</button>
-
-                                            {booking.status === 'accepted' && (
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedBooking(booking);
-                                                        setIsDurationModalOpen(true);
-                                                    }}
-                                                    className="flex-1 md:flex-none px-6 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 transition-all shadow-lg shadow-primary-100"
-                                                >
-                                                    Select Duration
-                                                </button>
-                                            )}
-
-                                            {booking.status === 'agreement_pending' && (
-                                                <button
-                                                    onClick={async () => {
-                                                        const agm = agreements.find(a => a.booking_id === booking.booking_id || a.booking_id === booking.request_id);
-                                                        if (agm) {
-                                                            setSelectedAgreement(agm);
-                                                            setIsAgreementModalOpen(true);
-                                                        } else {
-                                                            // Fallback fetch if not in state
-                                                            toast.loading('Loading agreement...');
-                                                            const data = await tenantService.getMyAgreements();
-                                                            const found = data.agreements.find(a => a.booking_id === booking.booking_id || a.booking_id === booking.request_id);
-                                                            toast.dismiss();
-                                                            if (found) {
-                                                                setSelectedAgreement(found);
-                                                                setIsAgreementModalOpen(true);
-                                                            } else {
-                                                                toast.error('Agreement not found yet');
-                                                            }
-                                                        }
-                                                    }}
-                                                    className="flex-1 md:flex-none px-6 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 transition-all shadow-lg shadow-primary-100"
-                                                >
-                                                    Review Agreement
-                                                </button>
-                                            )}
-
-                                            {booking.status === 'payment_pending' && (
-                                                <button
-                                                    onClick={() => {
-                                                        const agm = agreements.find(a => a.booking_id === booking.booking_id || a.booking_id === booking.request_id);
-                                                        setSelectedPayment({
-                                                            type: 'deposit',
-                                                            amount: agm?.security_deposit || 5000,
-                                                            owner_name: agm?.owner_name || 'Owner',
-                                                            booking_id: booking.booking_id || booking.request_id
-                                                        });
-                                                        setIsPaymentModalOpen(true);
-                                                    }}
-                                                    className="flex-1 md:flex-none px-6 py-2 rounded-xl text-sm font-bold bg-green-600 text-white hover:bg-green-700 transition-all shadow-lg shadow-green-100"
-                                                >
-                                                    Pay Deposit (Rs. 5000)
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -495,6 +521,7 @@ const TenantDashboard = () => {
                                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Settlement Date</th>
                                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Disbursement</th>
                                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Verification Status</th>
+                                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100/50 bg-white/40">
@@ -516,9 +543,34 @@ const TenantDashboard = () => {
                                                     </td>
                                                     <td className="px-8 py-6">
                                                         <div className="flex items-center gap-2">
-                                                            <div className={`w-2 h-2 rounded-full ${p.status === 'paid' || p.payment_status === 'completed' ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
-                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(p.status || p.payment_status)?.toUpperCase()}</span>
+                                                            <div className={`w-2 h-2 rounded-full ${p.payment_status === 'completed' || p.status === 'paid' ? 'bg-green-500' : 'bg-yellow-500'} animate-pulse`} />
+                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(p.payment_status || p.status)?.toUpperCase()}</span>
                                                         </div>
+                                                    </td>
+                                                    <td className="px-8 py-6 whitespace-nowrap">
+                                                        {(p.payment_status === 'pending' || p.status === 'pending') && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedPayment({
+                                                                        ...p,
+                                                                        type: p.payment_type || 'rent',
+                                                                        amount: p.amount || p.total_amount,
+                                                                        breakdown: {
+                                                                            rent: p.base_rent,
+                                                                            units: p.electricity_units,
+                                                                            electricity_amount: p.electricity_amount,
+                                                                            water: p.water_amount,
+                                                                            garbage: p.garbage_amount
+                                                                        },
+                                                                        deposit_adjustment: p.deposit_adjustment
+                                                                    });
+                                                                    setIsPaymentModalOpen(true);
+                                                                }}
+                                                                className="px-6 py-2 rounded-xl text-[10px] font-black bg-primary-600 text-white hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 uppercase tracking-widest"
+                                                            >
+                                                                Settle Now
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -720,15 +772,11 @@ const TenantDashboard = () => {
                             <div className="flex flex-col md:flex-row items-center gap-8">
                                 <div className="relative group">
                                     <div className="w-32 h-32 rounded-3xl bg-primary-600 border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-black overflow-hidden">
-                                        {user?.profile_image ? (
-                                            <img
-                                                src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
-                                                alt=""
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            user?.full_name?.charAt(0)
-                                        )}
+                                        <img
+                                            src={getProfileAvatar(user)}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
                                     <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-3xl">
                                         <div className="text-center">

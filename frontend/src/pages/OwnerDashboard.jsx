@@ -26,6 +26,7 @@ import BookingsTab from './OwnerDashboard/BookingsTab';
 import PaymentsTab from './OwnerDashboard/PaymentsTab';
 import AgreementsTab from './OwnerDashboard/AgreementsTab';
 import MaintenanceTab from './OwnerDashboard/MaintenanceTab';
+import { getProfileAvatar } from '../utils/urlHelper';
 
 const IMG_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
 
@@ -328,12 +329,9 @@ const OwnerDashboard = () => {
                             <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold border-2 border-primary-500 overflow-hidden">
                                 {user?.profile_image ? (
                                     <img
-                                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
+                                        src={getProfileAvatar(user)}
                                         alt=""
                                         className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                            e.target.src = `https://ui-avatars.com/api/?name=${user?.full_name}&background=random`;
-                                        }}
                                     />
                                 ) : (
                                     user?.full_name?.charAt(0)
@@ -435,15 +433,11 @@ const OwnerDashboard = () => {
                             <div className="flex flex-col md:flex-row items-center gap-8">
                                 <div className="relative group">
                                     <div className="w-32 h-32 rounded-3xl bg-primary-600 border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-black overflow-hidden">
-                                        {user?.profile_image ? (
-                                            <img
-                                                src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`}
-                                                alt=""
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            user?.full_name?.charAt(0)
-                                        )}
+                                        <img
+                                            src={getProfileAvatar(user)}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
                                     <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-3xl">
                                         <div className="text-center">
